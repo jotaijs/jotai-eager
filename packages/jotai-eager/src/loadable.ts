@@ -13,6 +13,23 @@ export type Loadable<Value> =
 
 const Pending = Symbol('The loadable is pending');
 
+/**
+ * Wraps an atom to provide a loadable state, representing its value as 'loading', 'hasError', or 'hasData'.
+ * Shares a Promise cache between all jotai-eager APIs, further minimizing suspensions.
+ *
+ * @param anAtom The atom whose value should be wrapped in a loadable state.
+ * @returns An atom that returns a Loadable object indicating the current state of the input atom's value.
+ *
+ * @example
+ * ```ts
+ * import { atom } from 'jotai';
+ * import { loadable } from 'jotai-eager';
+ *
+ * const asyncAtom = atom(async () => 'data');
+ * const loadableAtom = loadable(asyncAtom);
+ * // loadableAtom returns: { state: 'loading' } | { state: 'hasError', error: unknown } | { state: 'hasData', data: 'data' }
+ * ```
+ */
 export function loadable<Value>(anAtom: Atom<Value>): Atom<Loadable<Value>> {
   return memo1(() => {
     const atomWithPending = withPending(anAtom, (): typeof Pending => Pending);

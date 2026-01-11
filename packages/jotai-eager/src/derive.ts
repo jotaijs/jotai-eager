@@ -18,7 +18,20 @@ type AwaitAtomsValues<TTuple extends readonly [Atom<unknown>, ...Atom<unknown>[]
  * If computing the value fails (throws), a rejected Promise is returned no matter if
  * the processing happened synchronously or not.
  *
- * @deprecated In favor of the eagerAtom() API.
+ * @param deps An array of atoms whose values will be awaited and passed to the operation function.
+ * @param op A function that takes the awaited values of the dependencies and returns a new value. It is called synchronously if all dependencies are fulfilled, otherwise asynchronously.
+ * @returns An atom that resolves to the result of the operation or a promise of the result if dependencies are pending.
+ * @deprecated Use `eagerAtom` for new code, as it provides a better developer experience, and matches more closely to how regualr atoms are defined.
+ *
+ * @example
+ * ```ts
+ * import { atom } from 'jotai';
+ * import { derive } from 'jotai-eager';
+ *
+ * const aAtom = atom(async () => 1);
+ * const bAtom = atom(async () => 2);
+ * const sumAtom = derive([aAtom, bAtom], (a, b) => a + b);
+ * ```
  */
 export function derive<TDeps extends readonly [Atom<unknown>, ...Atom<unknown>[]], TValue>(
   deps: TDeps,

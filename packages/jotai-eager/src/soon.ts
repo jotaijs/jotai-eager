@@ -4,9 +4,21 @@ import { getPromiseMeta, setPromiseMeta } from './isPromise.ts';
  * Executes `process` with `data` as input synchronously if `data` is known, meaning
  * it is not an unresolved promise of the value.
  *
- * @param data The data to process, now or later (soon)
- * @param process The processing function
- * @returns The result (or promise of result) from running `process`.
+ * @param data The data to process, now or later (soon).
+ * @param process The processing function that takes the awaited data and returns a result.
+ * @returns The result of processing the data synchronously if available, or a promise of the result if data is pending.
+ *
+ * @example
+ * ```ts
+ * import { atom } from 'jotai';
+ * import { soon } from 'jotai-eager';
+ *
+ * const dataAtom = atom(Promise.resolve('hello'));
+ * const resultAtom = atom((get) => {
+ *   const data = get(dataAtom);
+ *   return soon(data, (resolved) => resolved.toUpperCase());
+ * });
+ * ```
  */
 export function soon<TInput, TOutput>(
   data: TInput,
@@ -17,9 +29,17 @@ export function soon<TInput, TOutput>(
  * Executes `process` with `data` as input synchronously if `data` is known, meaning
  * it is not an unresolved promise of the value.
  *
- * @param process The processing function
- * @returns A function that can be called with `data`, and returns the
- *          result (or promise of result) from running `process` on `data`.
+ * @param process The processing function that takes the awaited data and returns a result.
+ * @returns A function that can be called with `data`, and returns the result (or promise of result) from running `process` on `data`.
+ *
+ * @example
+ * ```ts
+ * import { atom } from 'jotai';
+ * import { soon } from 'jotai-eager';
+ *
+ * const processFn = soon((str: string) => str.toUpperCase());
+ * const result = processFn(Promise.resolve('hello')); // Promise<'HELLO'> or 'HELLO'
+ * ```
  */
 export function soon<TInput, TOutput>(
   process: (knownData: NoInfer<Awaited<TInput>>) => TOutput,

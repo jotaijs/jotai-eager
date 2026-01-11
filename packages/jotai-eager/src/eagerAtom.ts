@@ -96,15 +96,32 @@ type AsyncReadFunctionError =
   'ERROR: The `read` function of eager atoms cannot be asynchronous, or return a Promise.';
 
 /**
- * A drop-in replacement for vanilla atoms wih custom async read functions, that
+ * A drop-in replacement for vanilla atoms with custom async read functions, that
  * removes unnecessary suspensions. The read function is written as if it was
  * synchronous, which allows for:
  * - eager computation of the atom's value in case all of its dependencies are fulfilled
  *   (which is not the case for vanilla async atoms).
  * - interrupting computation if a dependency is not yet fulfilled.
+ * The `get` parameter provides methods like `all()` to await multiple atoms simultaneously
+ * and `await()` for non-atom promises.
  *
- * @param args A sync read function that can read async atoms directly using the `get` parameter.
- * @returns An eager atom
+ * @param read A synchronous function that computes the atom's value using the eager getter, which can await dependencies directly.
+ * @param write An optional function to handle writes to the atom, receiving the standard getter, setter, and arguments.
+ * @returns An atom that resolves to the computed value or a promise of the result if dependencies are pending. For writable atoms, includes write functionality.
+ *
+ * @example
+ * ```ts
+ * import { atom } from 'jotai';
+ * import { eagerAtom } from 'jotai-eager';
+ *
+ * const petsAtom = atom(Promise.resolve(['cat', 'dog']));
+ * const filterAtom = atom('cat');
+ * const filteredPetsAtom = eagerAtom((get) => {
+ *   const pets = get(petsAtom);
+ *   const filter = get(filterAtom);
+ *   return pets.filter(name => name.includes(filter));
+ * });
+ * ```
  */
 // writable atom
 export function eagerAtom<Value, Args extends unknown[], Result>(
@@ -153,7 +170,25 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
 /**
  * Only useful if the eager atom's read function involves a try {} catch {}. Can be used to
  * detect whether a thrown value originates from `jotai-eager`, in which case should be rethrown.
- * @returns True if `error` is a suspension trigger originating from `jotai-eager`.
+ *
+ * @param error The error thrown during eager atom computation to check.
+ * @returns True if the error is a suspension trigger from jotai-eager, indicating computation should be paused; otherwise, false.
+ *
+ * @example
+ * ```ts
+ * import { eagerAtom, isEagerError } from 'jotai-eager';
+ *
+ * const myAtom = eagerAtom((get) => {
+ *   try {
+ *     // some computation
+ *   } catch (e) {
+ *     if (isEagerError(e)) {
+ *       throw e; // Rethrow to let jotai-eager handle
+ *     }
+ *     // Handle other errors
+ *   }
+ * });
+ * ```
  */
 export function isEagerError(error: unknown): boolean {
   return !!(error as EagerError)?.[NotYet];
