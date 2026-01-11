@@ -53,18 +53,20 @@ const filteredPetsAtom = eagerAtom((get) => {
 ```
 
 Now, the type reflects the eager behavior of this atom.
-It's value will be `string[]` if the only thing that
+Its value will be `string[]` if the only thing that
 changed is the filter, and `Promise<string[]>` otherwise!
 
-> Codesandbox example of jotai-eager + React:
+> CodeSandbox example of jotai-eager + React:
 >
 > [![Explore jotai-eager example](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/p/devbox/jotai-derive-example-forked-pf38dg)
+
+In addition to eager atoms, jotai-eager provides `loadable` for consistent loading state handling and `withPending` for fallback values during async resolution.
 
 ## Recipes
 
 ### Avoiding request waterfalls
 
-If your atom has multiple async dependencies, best to jump start all of them at once and wait for their results, instead of awaiting them sequentially. In vanilla async atoms, `Promise.all(...)` is the API to use, but in eager atoms, use the `get.all()` API:
+If your atom has multiple async dependencies, it's best to initiate all of them simultaneously and wait for their results, instead of awaiting them sequentially. In vanilla async atoms, `Promise.all(...)` is the API to use, but in eager atoms, use the `get.all()` API:
 
 ```ts
 const myMessages = eagerAtom((get) => {
@@ -75,7 +77,7 @@ const myMessages = eagerAtom((get) => {
 
 ### Awaiting a Promise that is not another atom's value
 
-We can use the `get.await` API to await regular Promises inside `eagerAtom` definitions, granted we make sure that the Promise
+We can use the `get.await` API to await regular Promises inside `eagerAtom` definitions, as long as we make sure that the Promise
 we're passing is consistent across invocations of the atom's read function.
 
 ```ts
@@ -87,11 +89,43 @@ const statusAtom = eagerAtom((get) => {
 });
 ```
 
+### Handling Loading States with `loadable`
+
+The `loadable` API wraps an atom to provide a consistent loading state representation, sharing a Promise cache between all jotai-eager APIs to minimize suspensions.
+
+```ts
+import { atom } from 'jotai';
+import { loadable } from 'jotai-eager';
+
+const asyncAtom = atom(async () => 'data');
+const loadableAtom = loadable(asyncAtom);
+
+// Use in component:
+const state = useAtom(loadableAtom);
+if (state.state === 'loading') return <div>Loading...</div>;
+if (state.state === 'hasError') return <div>Error: {state.error}</div>;
+return <div>{state.data}</div>;
+```
+
+### Handling Pending States with `withPending`
+
+The `withPending` API wraps an atom to handle unresolved values by returning a fallback, providing an alternative to Jotai's `unwrap` with enhanced pending state management.
+
+```ts
+import { atom } from 'jotai';
+import { withPending } from 'jotai-eager';
+
+const asyncAtom = atom(Promise.resolve('data'));
+const wrappedAtom = withPending(asyncAtom, () => 'Loading...');
+
+// Returns 'Loading...' while pending, then 'data'
+```
+
 ## Caveats
 
 ### Using `try` & `catch` inside eager atoms
 
-Eager atoms internally use exceptions to "suspend" computation of the atom until an async dependency is fulfilled (similar to React's suspense behavior, but does not require React to work). This means that using exception handling inside of eager atoms has to be instrumented with an additional call to `isEagerError`.
+Eager atoms internally use exceptions to suspend computation of the atom until an async dependency is fulfilled (similar to React's suspense behavior, but does not require React to function). This means that using exception handling inside eager atoms has to be instrumented with an additional call to `isEagerError`.
 
 ```ts
 import { eagerAtom, isEagerError } from 'jotai-eager';
@@ -112,8 +146,8 @@ const fooAtom = eagerAtom((get) => {
 
 ### Awaiting a Promise that is created inside the atom
 
-Since the read function is "retried" after a Promise we await is fulfilled, the mechanism expects
-the same promise to be passed into `get.await` the second time around. Since we're creating the
+Since the read function is 'retried' after a Promise we await is fulfilled, the mechanism expects
+the same promise to be passed into `get.await` the second time around. Since we are creating the
 Promise inside of the read function itself, that will never be the case, and we'll be stuck in an infinite loop.
 
 ```ts
@@ -126,7 +160,7 @@ const deferredNumberAtom = eagerAtom((get) => {
 });
 ```
 
-For this particular use-case, since we're always deferring, using an `eagerAtom` over
+For this particular use case, since we're always deferring, using an `eagerAtom` over
 a vanilla async atom is unnecessary. [See Advanced Usage for more complex patterns](#advanced-usage).
 
 ### Make note of the dual nature
@@ -181,5 +215,5 @@ immediately.
 
 Building data graphs with these dual-natured (sometimes async, sometimes sync) atoms as a base can lead to unnecessary rerenders, stale values and micro-suspensions (in case of React) if not handled with care.
 
-`jotai-eager` provides a primitive for building asynchronous data graphs
+`jotai-eager` provides primitives for building asynchronous data graphs
 that act on values as soon as they are available (either awaiting for them, or acting on them synchronously).
