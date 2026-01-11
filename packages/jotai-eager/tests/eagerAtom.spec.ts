@@ -7,15 +7,9 @@ import type { AwaitedAll } from '../src/eagerAtom.ts';
 
 describe('AwaitedAll<T>', () => {
   it('resolves a tuple of atoms to a tuple of their awaited values', () => {
-    expectTypeOf<AwaitedAll<[Atom<1>, Atom<Promise<2>>]>>().toEqualTypeOf<
-      [1, 2]
-    >();
-    expectTypeOf<
-      AwaitedAll<[Atom<Promise<1>>, Atom<2>, Atom<3>]>
-    >().toEqualTypeOf<[1, 2, 3]>();
-    expectTypeOf<AwaitedAll<(Atom<Promise<1>> | Atom<2>)[]>>().toEqualTypeOf<
-      (1 | 2)[]
-    >();
+    expectTypeOf<AwaitedAll<[Atom<1>, Atom<Promise<2>>]>>().toEqualTypeOf<[1, 2]>();
+    expectTypeOf<AwaitedAll<[Atom<Promise<1>>, Atom<2>, Atom<3>]>>().toEqualTypeOf<[1, 2, 3]>();
+    expectTypeOf<AwaitedAll<(Atom<Promise<1>> | Atom<2>)[]>>().toEqualTypeOf<(1 | 2)[]>();
   });
 
   it('resolves a tuple of Promises to their awaited values', () => {
@@ -67,7 +61,7 @@ describe('eagerAtom', () => {
   it('returns a rejected promise on async dependency throw', async () => {
     const error = new Error('');
     const invalidAtom = atom<Promise<number>>(async () => {
-      await 'foo';
+      'foo';
       throw error;
     });
     const doubledAtom = eagerAtom((get) => get(invalidAtom) * 2);
@@ -211,16 +205,10 @@ describe('eagerAtom', () => {
   it('computes a chain of eager atoms synchronously on a sync dependency change', async () => {
     const labelAtom = atom(Promise.resolve('John'));
     const counterAtom = atom(0);
-    const prefixedAtom = eagerAtom(
-      (get) => `${get(labelAtom)}:${get(counterAtom)}`,
-    );
-    const fixedAtom = eagerAtom(
-      (get) => `${get(prefixedAtom)}:${get(labelAtom)}`,
-    );
+    const prefixedAtom = eagerAtom((get) => `${get(labelAtom)}:${get(counterAtom)}`);
+    const fixedAtom = eagerAtom((get) => `${get(prefixedAtom)}:${get(labelAtom)}`);
 
-    await expect(store.get(prefixedAtom)).resolves.toMatchInlineSnapshot(
-      `"John:0"`,
-    );
+    await expect(store.get(prefixedAtom)).resolves.toMatchInlineSnapshot(`"John:0"`);
     store.set(counterAtom, 1);
     expect(store.get(fixedAtom)).toMatchInlineSnapshot(`"John:1:John"`);
   });

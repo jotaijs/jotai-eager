@@ -1,28 +1,28 @@
 #root {
-	max-width: 1280px;
-	margin: 0 auto;
-	padding: 2rem;
-	text-align: center;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
 }
 
 .row {
-	display: flex;
-	justify-content: center;
-	flex-direction: row;
-	gap: 2rem;
+  display: flex;
+  justify-content: center;
+  flex-direction: row;
+  gap: 2rem;
 }
 
 .buttons {
-	display: flex;
-	justify-content: center;
-	flex-direction: row;
-	gap: 1rem;
-	padding: 2rem;
+  display: flex;
+  justify-content: center;
+  flex-direction: row;
+  gap: 1rem;
+  padding: 2rem;
 }
 
 .panel {
-	padding: 1rem;
-	border: 1px rgba(0, 0, 0, 0.1) solid;
-	border-radius: 1rem;
-	min-width: 16rem;
+  padding: 1rem;
+  border: 1px rgba(0, 0, 0, 0.1) solid;
+  border-radius: 1rem;
+  min-width: 16rem;
 }

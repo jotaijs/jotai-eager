@@ -8,11 +8,7 @@ import {
 } from 'jotai';
 import { eagerAtom } from 'jotai-eager';
 import { Suspense } from 'react';
-import {
-  refetchUserAtom,
-  updateOptimisticallyAtom,
-  userAtom,
-} from './userAtom';
+import { refetchUserAtom, updateOptimisticallyAtom, userAtom } from './userAtom';
 import './App.css';
 
 type CounterAtom = WritableAtom<number, [SetStateAction<number>], void>;
@@ -48,11 +44,7 @@ function NameDisplay(props: { nameAtom: NameAtom }) {
   return <p>Name: {name}</p>;
 }
 
-function Panel(props: {
-  title: string;
-  nameAtom: NameAtom;
-  counterAtom: CounterAtom;
-}) {
+function Panel(props: { title: string; nameAtom: NameAtom; counterAtom: CounterAtom }) {
   const { title, nameAtom, counterAtom } = props;
 
   return (

@@ -1,22 +1,24 @@
 {
   "name": "jotai-eager-monorepo",
   "private": true,
-  "packageManager": "pnpm@10.11.0+sha512.6540583f41cc5f628eb3d9773ecee802f4f9ef9923cc45b69890fb47991d4b092964694ec3a4f738a420c918a333062c8b925d312f42e4f0c263eb603551f977",
   "scripts": {
     "dev": "pnpm run --parallel -r dev",
     "test": "pnpm run '/^test:.*/'",
-    "test:biome": "biome check --write",
+    "fix": "oxlint --fix && oxfmt",
+    "test:style": "oxlint && oxfmt --check",
     "test:types": "pnpm run -r --parallel test:types",
     "test:spec": "vitest run",
     "vitest": "vitest"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.4",
     "@types/node": "catalog:",
     "automd": "^0.4.0",
     "happy-dom": "^17.4.4",
+    "oxfmt": "^0.23.0",
+    "oxlint": "^1.38.0",
     "typescript": "catalog:",
     "unbuild": "^3.5.0",
     "vitest": "catalog:"
-  }
+  },
+  "packageManager": "pnpm@10.11.0+sha512.6540583f41cc5f628eb3d9773ecee802f4f9ef9923cc45b69890fb47991d4b092964694ec3a4f738a420c918a333062c8b925d312f42e4f0c263eb603551f977"
 }

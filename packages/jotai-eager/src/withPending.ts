@@ -15,35 +15,21 @@ export function withPending<Value, Args extends unknown[], Result>(
   anAtom: WritableAtom<Value, Args, Result>,
 ): WritableAtom<Awaited<Value> | undefined, Args, Result>;
 
-export function withPending<
-  Value,
-  Args extends unknown[],
-  Result,
-  PendingValue,
->(
+export function withPending<Value, Args extends unknown[], Result, PendingValue>(
   anAtom: WritableAtom<Value, Args, Result>,
   fallback: (ctx: WithPendingContext<Value>) => PendingValue,
 ): WritableAtom<Awaited<Value> | PendingValue, Args, Result>;
 
-export function withPending<Value>(
-  anAtom: Atom<Value>,
-): Atom<Awaited<Value> | undefined>;
+export function withPending<Value>(anAtom: Atom<Value>): Atom<Awaited<Value> | undefined>;
 
 export function withPending<Value, PendingValue>(
   anAtom: Atom<Value>,
   fallback: (ctx: WithPendingContext<Value>) => PendingValue,
 ): Atom<Awaited<Value> | PendingValue>;
 
-export function withPending<
-  Value,
-  Args extends unknown[],
-  Result,
-  PendingValue,
->(
+export function withPending<Value, Args extends unknown[], Result, PendingValue>(
   anAtom: WritableAtom<Value, Args, Result> | Atom<Value>,
-  fallback: (
-    ctx: WithPendingContext<Value>,
-  ) => PendingValue = defaultFallback as never,
+  fallback: (ctx: WithPendingContext<Value>) => PendingValue = defaultFallback as never,
 ) {
   type PromiseAndValue = { readonly p?: PromiseLike<unknown> } & (
     | { readonly v: Awaited<Value> }
@@ -126,7 +112,6 @@ export function withPending<
       }
       return state.v;
     },
-    (_get, set, ...args) =>
-      set(anAtom as WritableAtom<Value, unknown[], unknown>, ...args),
+    (_get, set, ...args) => set(anAtom as WritableAtom<Value, unknown[], unknown>, ...args),
   );
 }

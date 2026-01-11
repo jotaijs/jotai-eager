@@ -14,9 +14,7 @@ describe('soon', () => {
 
     expect(wrapped).toEqual({ inside: 654 });
 
-    expectTypeOf(wrapped).toEqualTypeOf<
-      { inside: number } | Promise<{ inside: number }>
-    >();
+    expectTypeOf(wrapped).toEqualTypeOf<{ inside: number } | Promise<{ inside: number }>>();
   });
 
   it('processes sync and async data as soon as possible', async () => {
@@ -122,9 +120,7 @@ describe('soon (in atoms)', () => {
 
     let numberOfCalculations = 0;
 
-    const flooredAtom = atom((get) =>
-      soon(get(baseAtom), (value) => Math.floor(value)),
-    );
+    const flooredAtom = atom((get) => soon(get(baseAtom), (value) => Math.floor(value)));
 
     const messageAtom = atom((get) =>
       soon(get(flooredAtom), (value) => {

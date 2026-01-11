@@ -36,10 +36,7 @@ export function soon<TInput, TOutput>(
 
   // data-last
   return (data: TInput) => {
-    return _soonImpl(
-      data,
-      first as (input: NoInfer<Awaited<TInput>>) => TOutput,
-    );
+    return _soonImpl(data, first as (input: NoInfer<Awaited<TInput>>) => TOutput);
   };
 }
 
