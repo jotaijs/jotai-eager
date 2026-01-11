@@ -214,7 +214,7 @@ describe('eagerAtom', () => {
   });
 
   describe('get.await', () => {
-    it('awaits a regular Promise', () => {
+    it('awaits a regular Promise', async () => {
       const statusPromise = Promise.resolve<'success' | 'failure'>('success');
       const invoiceAtom = atom({
         getStatus() {
@@ -227,7 +227,7 @@ describe('eagerAtom', () => {
         return get.await(invoice.getStatus());
       });
 
-      expect(store.get(statusAtom)).resolves.toEqual('success');
+      await expect(store.get(statusAtom)).resolves.toEqual('success');
     });
   });
 });
