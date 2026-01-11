@@ -39,9 +39,7 @@ describe('withPending', () => {
     const fooAtom = atom(Promise.resolve(123));
     const fooOrPendingAtom = withPending(fooAtom, ({ prev }) => prev ?? 0);
 
-    expect(store.get(fooOrPendingAtom)).toEqual(
-      0 /* the default pending value */,
-    );
+    expect(store.get(fooOrPendingAtom)).toEqual(0 /* the default pending value */);
     await Promise.resolve(); // wait micro-tick
     expect(store.get(fooOrPendingAtom)).toEqual(123);
 
@@ -56,9 +54,7 @@ describe('withPending', () => {
     const fooAtom = atom(Promise.resolve(123));
     const fooOrPendingAtom = withPending(fooAtom, ({ prev }) => prev ?? 0);
 
-    expect(store.get(fooOrPendingAtom)).toEqual(
-      0 /* the default pending value */,
-    );
+    expect(store.get(fooOrPendingAtom)).toEqual(0 /* the default pending value */);
     await Promise.resolve(); // wait micro-tick
     expect(store.get(fooOrPendingAtom)).toEqual(123);
 
@@ -72,9 +68,7 @@ describe('withPending', () => {
   it('falls back to the value of another atom', async () => {
     const fooAtom = atom(Promise.resolve(123));
     const fallbackAtom = atom('Loading...');
-    const fooOrPendingAtom = withPending(fooAtom, ({ get }) =>
-      get(fallbackAtom),
-    );
+    const fooOrPendingAtom = withPending(fooAtom, ({ get }) => get(fallbackAtom));
 
     expect(store.get(fooOrPendingAtom)).toEqual('Loading...');
     store.set(fallbackAtom, 'Not ready yet');

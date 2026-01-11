@@ -1,7 +1,7 @@
 {
   "name": "react-example",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "jotai": "2.8.0",
+    "jotai-eager": "workspace:*",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "jotai-eager": "workspace:*"
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
     "@types/react": "^19.1.2",

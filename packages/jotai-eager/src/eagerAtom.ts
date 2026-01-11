@@ -35,11 +35,7 @@ interface EagerGetter {
 
 type Read<Value> = (get: EagerGetter) => Value;
 
-type Write<Args extends unknown[], Result> = (
-  get: Getter,
-  set: Setter,
-  ...args: Args
-) => Result;
+type Write<Args extends unknown[], Result> = (get: Getter, set: Setter, ...args: Args) => Result;
 
 const NotYet = Symbol(
   '(jotai-eager) Not all dependencies were fulfilled. Are you a dev? Call `isEagerError(e)` to detect this thrown value and rethrow it, as its handled by the library.',
@@ -68,10 +64,7 @@ function unwrapPromise<T>(promise: T): Awaited<T> {
   return meta.value as Awaited<T>; // Fulfilled
 }
 
-function resolveSuspension<T>(
-  compute: () => T,
-  signal: AbortSignal,
-): T | Promise<T> {
+function resolveSuspension<T>(compute: () => T, signal: AbortSignal): T | Promise<T> {
   try {
     return compute();
   } catch (e) {
@@ -124,9 +117,7 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
 // read-only atom
 export function eagerAtom<Value>(
   // NOTE: Wrapping in [] to avoid spreading the operation over union elements
-  ...args: [Value] extends [PromiseLike<unknown>]
-    ? [AsyncReadFunctionError]
-    : [read: Read<Value>]
+  ...args: [Value] extends [PromiseLike<unknown>] ? [AsyncReadFunctionError] : [read: Read<Value>]
 ): Atom<Promise<Value> | Value>;
 
 export function eagerAtom<Value, Args extends unknown[], Result>(
@@ -135,10 +126,7 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
     ? [AsyncReadFunctionError]
     : [read: Read<Value>, write?: Write<Args, Result>]
 ): WritableAtom<Promise<Value> | Value, Args, Result> {
-  const [read, write] = args as [
-    read: Read<Value>,
-    write?: Write<Args, Result>,
-  ];
+  const [read, write] = args as [read: Read<Value>, write?: Write<Args, Result>];
 
   return atom(
     (get, { signal }) => {

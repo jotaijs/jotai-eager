@@ -1,9 +1,4 @@
-import {
-  getFulfilledValue,
-  isKnown,
-  isPromiseLike,
-  setPromiseMeta,
-} from './isPromise.ts';
+import { getFulfilledValue, isKnown, isPromiseLike, setPromiseMeta } from './isPromise.ts';
 
 type PromiseOrValue<T> = Promise<T> | T;
 
@@ -16,9 +11,7 @@ type SoonAll<T extends readonly unknown[]> = PromiseOrValue<{
  * returns an array of the same length with Awaited `values`. Otherwise, it returns a
  * promise to that array.
  */
-export function soonAll<T extends readonly unknown[] | []>(
-  values: T,
-): SoonAll<T>;
+export function soonAll<T extends readonly unknown[] | []>(values: T): SoonAll<T>;
 export function soonAll<T extends readonly unknown[]>(values: T): SoonAll<T>;
 export function soonAll<T extends readonly unknown[]>(values: T): SoonAll<T> {
   if (values.every(isKnown)) {

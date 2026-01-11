@@ -17,10 +17,12 @@ npm install jotai-eager
 
 The **jōtai eager** library lets you build asynchronous data graphs without unnecessary
 suspensions. Eager atoms are a direct replacement for vanilla atoms with a custom async read function, with a few differences:
+
 - The read function has to be synchronous, because eager atoms handle asynchronicity transparently.
 - Eager atoms have to be pure (even more so than vanilla atoms). That's because their read function can be executed multiple times on dependency change.
 
 Let's say we have an atom that fetches names of pets from an API, and a filter atom:
+
 ```ts
 const petsAtom = atom<Promise<string[]>>(...);
 const filterAtom = atom('cat');
@@ -32,7 +34,7 @@ To create an atom of filtered pets using vanilla atoms, we would do the followin
 const filteredPetsAtom = atom(async (get) => {
   const filter = get(filterAtom);
   const pets = await get(petsAtom);
-  return pets.filter(name => name.includes(filter));
+  return pets.filter((name) => name.includes(filter));
 }); // => Atom<Promise<string[]>>
 ```
 
@@ -46,7 +48,7 @@ import { eagerAtom } from 'jotai-eager';
 const filteredPetsAtom = eagerAtom((get) => {
   const filter = get(filterAtom);
   const pets = get(petsAtom); // ✨ no await ✨
-  return pets.filter(name => name.includes(filter));
+  return pets.filter((name) => name.includes(filter));
 }); // => Atom<Promise<string[]> | string[]>
 ```
 
@@ -55,7 +57,7 @@ It's value will be `string[]` if the only thing that
 changed is the filter, and `Promise<string[]>` otherwise!
 
 > Codesandbox example of jotai-eager + React:
-> 
+>
 > [![Explore jotai-eager example](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/p/devbox/jotai-derive-example-forked-pf38dg)
 
 ## Recipes
@@ -115,8 +117,7 @@ the same promise to be passed into `get.await` the second time around. Since we'
 Promise inside of the read function itself, that will never be the case, and we'll be stuck in an infinite loop.
 
 ```ts
-const sleep = (ms: number) =>
-  new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // This atom will be stuck in an infinite loop :(
 const deferredNumberAtom = eagerAtom((get) => {
@@ -144,18 +145,13 @@ be used to perform sync/async transformations on data eagerly, on a more fine-gr
 ```ts
 import { soon } from 'jotai-eager';
 
-declare const queryAtom:
-  Atom<RestrictedItem | Promise<RestrictedItem>>;
-declare const isAdminAtom:
-  Atom<boolean | Promise<boolean>>;
+declare const queryAtom: Atom<RestrictedItem | Promise<RestrictedItem>>;
+declare const isAdminAtom: Atom<boolean | Promise<boolean>>;
 
 // Atom<RestrictedItem | null | Promise<RestrictedItem | null>>
 const restrictedItemAtom = atom((get) => {
   const isAdmin = get(isAdminAtom);
-  return soon(
-    isAdmin,
-    (isAdmin) => isAdmin ? get(queryAtom) : null,
-  );
+  return soon(isAdmin, (isAdmin) => (isAdmin ? get(queryAtom) : null));
 });
 ```
 
@@ -164,22 +160,16 @@ const restrictedItemAtom = atom((get) => {
 ```ts
 import { soon, soonAll } from 'jotai-eager';
 
-declare const queryAtom:
-  Atom<RestrictedItem | Promise<RestrictedItem>>;
-declare const isAdminAtom:
-  Atom<boolean | Promise<boolean>>;
-declare const enabledAtom:
-  Atom<boolean | Promise<boolean>>;
+declare const queryAtom: Atom<RestrictedItem | Promise<RestrictedItem>>;
+declare const isAdminAtom: Atom<boolean | Promise<boolean>>;
+declare const enabledAtom: Atom<boolean | Promise<boolean>>;
 
 // Atom<RestrictedItem | null | Promise<RestrictedItem | null>>
 const restrictedItemAtom = atom((get) => {
-  return soon(
-    soonAll(get(isAdminAtom), get(enabledAtom)),
-    ([isAdmin, enabled]) =>
-      isAdmin && enabled ? get(queryAtom) : null,
+  return soon(soonAll(get(isAdminAtom), get(enabledAtom)), ([isAdmin, enabled]) =>
+    isAdmin && enabled ? get(queryAtom) : null,
   );
 });
-
 ```
 
 ## Motivation

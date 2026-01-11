@@ -1,25 +1,38 @@
 {
   "name": "jotai-eager",
   "version": "0.2.3",
-  "type": "module",
   "description": "Jōtai utilities that help with asynchronous atoms",
-  "author": "Iwo Plaza <iwoplaza@gmail.com> (https://iwoplaza.dev)",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jotaijs/jotai-eager.git"
-  },
+  "keywords": [
+    "async",
+    "asynchronous",
+    "derive",
+    "derived",
+    "jotai",
+    "promise",
+    "react"
+  ],
   "bugs": {
     "url": "https://github.com/jotaijs/jotai-eager/issues",
     "email": "iwoplaza@gmail.com"
   },
   "license": "MIT",
+  "author": "Iwo Plaza <iwoplaza@gmail.com> (https://iwoplaza.dev)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jotaijs/jotai-eager.git"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts"
   },
   "publishConfig": {
-    "main": "./dist/index.mjs",
-    "types": "./dist/index.d.mts",
     "exports": {
       "./package.json": "./package.json",
       ".": {
@@ -32,26 +45,14 @@
           "default": "./dist/index.mjs"
         }
       }
-    }
+    },
+    "main": "./dist/index.mjs",
+    "types": "./dist/index.d.mts"
   },
-  "sideEffects": false,
-  "files": ["README.md", "dist", "package.json"],
   "scripts": {
     "build": "unbuild",
     "test:types": "tsc -p . --noEmit",
     "prepublishOnly": "automd && pnpm build"
-  },
-  "keywords": [
-    "jotai",
-    "react",
-    "async",
-    "asynchronous",
-    "promise",
-    "derive",
-    "derived"
-  ],
-  "peerDependencies": {
-    "jotai": ">=2.0.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
@@ -60,5 +61,8 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "jotai": ">=2.0.0"
   }
 }

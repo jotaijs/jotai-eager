@@ -5,15 +5,11 @@ import { soonAll } from './soonAll.ts';
 
 type PromiseOrValue<T> = T | Promise<T>;
 
-type ExtractAtomsValues<
-  TAtoms extends readonly [Atom<unknown>, ...Atom<unknown>[]],
-> = {
+type ExtractAtomsValues<TAtoms extends readonly [Atom<unknown>, ...Atom<unknown>[]]> = {
   [Index in keyof TAtoms]: ExtractAtomValue<TAtoms[Index]>;
 };
 
-type AwaitAtomsValues<
-  TTuple extends readonly [Atom<unknown>, ...Atom<unknown>[]],
-> = {
+type AwaitAtomsValues<TTuple extends readonly [Atom<unknown>, ...Atom<unknown>[]]> = {
   [Index in keyof TTuple]: Awaited<ExtractAtomValue<TTuple[Index]>>;
 };
 
@@ -24,10 +20,7 @@ type AwaitAtomsValues<
  *
  * @deprecated In favor of the eagerAtom() API.
  */
-export function derive<
-  TDeps extends readonly [Atom<unknown>, ...Atom<unknown>[]],
-  TValue,
->(
+export function derive<TDeps extends readonly [Atom<unknown>, ...Atom<unknown>[]], TValue>(
   deps: TDeps,
   op: (...depValues: AwaitAtomsValues<TDeps>) => TValue,
 ): Atom<TValue | Promise<Awaited<TValue>>> {
