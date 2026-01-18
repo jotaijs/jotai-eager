@@ -1,6 +1,6 @@
 {
   "name": "jotai-eager",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Jōtai utilities that help with asynchronous atoms",
   "keywords": [
     "async",
