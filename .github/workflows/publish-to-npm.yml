@@ -1,0 +1,36 @@
+name: Publish to NPM
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          registry-url: https://registry.npmjs.org/
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --recursive --frozen-lockfile
+
+      - run: pnpm publish-package -- --provenance --access public --no-git-checks
+        working-directory: ./packages/jotai-eager
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
