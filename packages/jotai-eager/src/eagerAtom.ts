@@ -64,25 +64,40 @@ function unwrapPromise<T>(promise: T): Awaited<T> {
   return meta.value as Awaited<T>; // Fulfilled
 }
 
-function resolveSuspension<T>(compute: () => T, signal: AbortSignal): T | Promise<T> {
+function resolveSuspension<T>(
+  compute: () => T,
+  getLatest: () => T | Promise<T>,
+  signal: AbortSignal,
+): T | Promise<T> {
   try {
+    // If the computation is strictly synchronous, the function will
+    // be able to return a non-promise result immediately.
     return compute();
   } catch (e) {
     const suspended = (e as EagerError | { [NotYet]?: undefined })[NotYet];
     if (suspended) {
+      // There's a pending promise
       return suspended.then(
         (value) => {
           setPromiseMeta(suspended, { status: 'fulfilled', value });
+          // If the dependencies changed while the promise was pending,
+          // then we make it resolve with the result of the latest
+          // computation.
           if (signal.aborted) {
-            return undefined as T;
+            return getLatest();
           }
-          return resolveSuspension(compute, signal);
+          // ... otherwise we try to compute the atom again.
+          return resolveSuspension(compute, getLatest, signal);
         },
         (reason) => {
-          if (signal.aborted) {
-            return undefined as T;
-          }
           setPromiseMeta(suspended, { status: 'rejected', reason });
+          // If the dependencies changed while the promise was pending,
+          // then we make it resolve with the result of the latest
+          // computation.
+          if (signal.aborted) {
+            return getLatest();
+          }
+          // ... otherwise we throw the error we received.
           throw reason;
         },
       );
@@ -145,7 +160,7 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
 ): WritableAtom<Promise<Value> | Value, Args, Result> {
   const [read, write] = args as [read: Read<Value>, write?: Write<Args, Result>];
 
-  return atom(
+  const resultAtom: WritableAtom<Promise<Value> | Value, Args, Result> = atom(
     (get, { signal }) => {
       const eagerGet = (<Value>(atomToGet: Atom<Value>): Awaited<Value> =>
         unwrapPromise(get(atomToGet))) as EagerGetter;
@@ -161,10 +176,16 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
       eagerGet.awaitAll = <T extends readonly unknown[]>(values: T) =>
         values.map((v) => unwrapPromise(v)) as AwaitedAll<T>;
 
-      return resolveSuspension(() => read(eagerGet), signal);
+      return resolveSuspension(
+        () => read(eagerGet),
+        () => get(resultAtom),
+        signal,
+      );
     },
     write ?? (() => undefined as unknown as Result),
   );
+
+  return resultAtom;
 }
 
 /**

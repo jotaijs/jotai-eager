@@ -1,7 +1,7 @@
 import type { Atom } from 'jotai/vanilla';
 import { eagerAtom, isEagerError } from 'jotai-eager';
 import { atom, createStore } from 'jotai/vanilla';
-import { beforeEach, describe, expect, expectTypeOf, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { deferred } from './mockUtils.ts';
 import type { AwaitedAll } from '../src/eagerAtom.ts';
 
@@ -22,6 +22,11 @@ describe('eagerAtom', () => {
 
   beforeEach(() => {
     store = createStore();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('can be writable', () => {
@@ -60,13 +65,18 @@ describe('eagerAtom', () => {
 
   it('returns a rejected promise on async dependency throw', async () => {
     const error = new Error('');
-    const invalidAtom = atom<Promise<number>>(async () => {
-      'foo';
-      throw error;
-    });
-    const doubledAtom = eagerAtom((get) => get(invalidAtom) * 2);
+    const invalidAtom = atom(
+      new Promise<number>((_resolve, reject) => {
+        setTimeout(() => reject(error), 1000);
+      }),
+    );
 
-    await expect(store.get(doubledAtom)).rejects.toThrowError(error);
+    const doubledAtom = eagerAtom((get) => get(invalidAtom) * 2);
+    const value = store.get(doubledAtom);
+
+    vi.runAllTimers();
+
+    await expect(value).rejects.toThrowError(error);
   });
 
   it('derives an async atom', async () => {
@@ -211,6 +221,34 @@ describe('eagerAtom', () => {
     await expect(store.get(prefixedAtom)).resolves.toMatchInlineSnapshot(`"John:0"`);
     store.set(counterAtom, 1);
     expect(store.get(fixedAtom)).toMatchInlineSnapshot(`"John:1:John"`);
+  });
+
+  it('returns promises that always resolve with the latest value, even when the dependencies change during computation', async () => {
+    const aTask1 = deferred<number>();
+    const aTask2 = deferred<number>();
+    const aAtom = atom(aTask1.promise);
+    const bAtom = eagerAtom((get) => get(aAtom));
+
+    // the first read produces a pending promise p1
+    const unsub = store.sub(bAtom, () => {});
+    const p1 = store.get(bAtom);
+    expect(p1).toBeInstanceOf(Promise);
+
+    // replacing aAtom's promise invalidates bAtom (it IS a direct dependency)
+    // and triggers a re-read, replacing p1 with p2 in the atom state
+    // jotai calls abortPromise(p1) → s1.abort()
+    store.set(aAtom, aTask2.promise);
+
+    // resolve the original promise after s1 is already aborted
+    aTask1.resolve(42);
+    // resolve the new dependency
+    aTask2.resolve(21);
+
+    // The first promise resolves to the value of `aTask2`, instead of it's
+    // initial `aTask1` dependency.
+    await expect(p1).resolves.toBe(21);
+
+    unsub();
   });
 
   describe('get.await', () => {
