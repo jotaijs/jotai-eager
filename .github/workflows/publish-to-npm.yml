@@ -7,11 +7,18 @@ on:
 
 jobs:
   publish:
+    if: github.repository == 'jotaijs/jotai-eager'
     runs-on: ubuntu-latest
     environment: production
+
     permissions:
-      contents: read
-      id-token: write
+      contents: write
+      id-token: write # for OIDC
+
+    concurrency:
+      group: publish-${{ github.ref }}
+      cancel-in-progress: false
+
     steps:
       - uses: actions/checkout@v4
 
@@ -23,14 +30,12 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 22.x
           registry-url: https://registry.npmjs.org/
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --recursive --frozen-lockfile
 
-      - run: pnpm publish-package -- --provenance --access public --no-git-checks
+      - run: pnpm stage publish --provenance --access public --no-git-checks
         working-directory: ./packages/jotai-eager
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
