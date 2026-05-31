@@ -64,28 +64,47 @@ function unwrapPromise<T>(promise: T): Awaited<T> {
   return meta.value as Awaited<T>; // Fulfilled
 }
 
-function resolveSuspension<T>(compute: () => T, signal: AbortSignal): T | Promise<T> {
+function resolveSuspension<T>(
+  compute: () => T,
+  getLatest: () => T | Promise<T>,
+  signal: AbortSignal,
+): T | Promise<T> {
   try {
+    // If the computation is strictly synchronous, the function will
+    // be able to return a non-promise result immediately.
     return compute();
   } catch (e) {
     const suspended = (e as EagerError | { [NotYet]?: undefined })[NotYet];
     if (suspended) {
-      return suspended.then(
-        (value) => {
-          setPromiseMeta(suspended, { status: 'fulfilled', value });
-          if (signal.aborted) {
-            return undefined as T;
-          }
-          return resolveSuspension(compute, signal);
-        },
-        (reason) => {
-          if (signal.aborted) {
-            return undefined as T;
-          }
-          setPromiseMeta(suspended, { status: 'rejected', reason });
-          throw reason;
-        },
-      );
+      // There's a pending promise
+      return new Promise<T>((resolve, reject) => {
+        signal.addEventListener(
+          'abort',
+          () => {
+            // If the dependencies changed while the promise was pending,
+            // then we make it resolve with the result of the latest
+            // computation.
+            resolve(getLatest());
+          },
+          { once: true },
+        );
+
+        suspended.then(
+          (value) => {
+            setPromiseMeta(suspended, { status: 'fulfilled', value });
+            if (signal.aborted) {
+              // Already resolved by the 'abort' event handler
+              return;
+            }
+            // ... otherwise we try to compute the atom again.
+            resolve(resolveSuspension(compute, getLatest, signal));
+          },
+          (reason) => {
+            setPromiseMeta(suspended, { status: 'rejected', reason });
+            reject(reason);
+          },
+        );
+      });
     }
     // Rejecting other errors
     return Promise.reject(e);
@@ -145,7 +164,7 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
 ): WritableAtom<Promise<Value> | Value, Args, Result> {
   const [read, write] = args as [read: Read<Value>, write?: Write<Args, Result>];
 
-  return atom(
+  const resultAtom: WritableAtom<Promise<Value> | Value, Args, Result> = atom(
     (get, { signal }) => {
       const eagerGet = (<Value>(atomToGet: Atom<Value>): Awaited<Value> =>
         unwrapPromise(get(atomToGet))) as EagerGetter;
@@ -161,10 +180,16 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
       eagerGet.awaitAll = <T extends readonly unknown[]>(values: T) =>
         values.map((v) => unwrapPromise(v)) as AwaitedAll<T>;
 
-      return resolveSuspension(() => read(eagerGet), signal);
+      return resolveSuspension(
+        () => read(eagerGet),
+        () => get(resultAtom),
+        signal,
+      );
     },
     write ?? (() => undefined as unknown as Result),
   );
+
+  return resultAtom;
 }
 
 /**
