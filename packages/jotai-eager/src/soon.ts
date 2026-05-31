@@ -1,11 +1,11 @@
 import { getPromiseMeta, setPromiseMeta } from './isPromise.ts';
 
 /**
- * Executes `process` with `data` as input synchronously if `data` is known, meaning
+ * Executes `handler` with `data` as input synchronously if `data` is known, meaning
  * it is not an unresolved promise of the value.
  *
  * @param data The data to process, now or later (soon).
- * @param process The processing function that takes the awaited data and returns a result.
+ * @param handler The processing function that takes the awaited data and returns a result.
  * @returns The result of processing the data synchronously if available, or a promise of the result if data is pending.
  *
  * @example
@@ -22,15 +22,15 @@ import { getPromiseMeta, setPromiseMeta } from './isPromise.ts';
  */
 export function soon<TInput, TOutput>(
   data: TInput,
-  process: (knownData: Awaited<TInput>) => TOutput,
+  handler: (knownData: Awaited<TInput>) => TOutput,
 ): TOutput | Promise<Awaited<TOutput>>;
 
 /**
- * Executes `process` with `data` as input synchronously if `data` is known, meaning
+ * Executes `handler` with `data` as input synchronously if `data` is known, meaning
  * it is not an unresolved promise of the value.
  *
- * @param process The processing function that takes the awaited data and returns a result.
- * @returns A function that can be called with `data`, and returns the result (or promise of result) from running `process` on `data`.
+ * @param handler The processing function that takes the awaited data and returns a result.
+ * @returns A function that can be called with `data`, and returns the result (or promise of result) from running `handler` on `data`.
  *
  * @example
  * ```ts
@@ -42,7 +42,7 @@ export function soon<TInput, TOutput>(
  * ```
  */
 export function soon<TInput, TOutput>(
-  process: (knownData: NoInfer<Awaited<TInput>>) => TOutput,
+  handler: (knownData: NoInfer<Awaited<TInput>>) => TOutput,
 ): (data: TInput) => TOutput | Promise<Awaited<TOutput>>;
 
 export function soon<TInput, TOutput>(
@@ -62,14 +62,14 @@ export function soon<TInput, TOutput>(
 
 function _soonImpl<TInput, TOutput>(
   data: TInput,
-  process: (knownData: NoInfer<Awaited<TInput>>) => TOutput,
+  handler: (knownData: NoInfer<Awaited<TInput>>) => TOutput,
 ): TOutput | Promise<Awaited<TOutput>> {
   const meta = getPromiseMeta<Awaited<TInput>>(data);
 
   if (meta) {
     if (meta.status === 'fulfilled') {
-      // can process the value earlier
-      return process(meta.value);
+      // can handle the value earlier
+      return handler(meta.value);
     }
 
     if (meta.status === 'rejected') {
@@ -84,7 +84,7 @@ function _soonImpl<TInput, TOutput>(
     const transformedPromise = promise.then(
       (value) => {
         setPromiseMeta(promise, { status: 'fulfilled', value });
-        return process(value) as Awaited<TOutput>;
+        return handler(value) as Awaited<TOutput>;
       },
       (reason) => {
         setPromiseMeta(promise, { status: 'rejected', reason });
@@ -95,7 +95,7 @@ function _soonImpl<TInput, TOutput>(
   }
 
   try {
-    return process(data as Awaited<TInput>);
+    return handler(data as Awaited<TInput>);
   } catch (err) {
     // To keep the error handling behavior consistent, lets
     // always return a rejected promise, even if the processing
