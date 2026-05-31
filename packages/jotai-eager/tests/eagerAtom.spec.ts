@@ -154,6 +154,71 @@ describe('eagerAtom', () => {
 		`);
   });
 
+  it('computes a chain of eager atoms synchronously on a sync dependency change', async () => {
+    const labelAtom = atom(Promise.resolve('John'));
+    const counterAtom = atom(0);
+    const prefixedAtom = eagerAtom((get) => `${get(labelAtom)}:${get(counterAtom)}`);
+    const fixedAtom = eagerAtom((get) => `${get(prefixedAtom)}:${get(labelAtom)}`);
+
+    await expect(store.get(prefixedAtom)).resolves.toMatchInlineSnapshot(`"John:0"`);
+    store.set(counterAtom, 1);
+    expect(store.get(fixedAtom)).toMatchInlineSnapshot(`"John:1:John"`);
+  });
+
+  it('returns promises that always resolve with the latest value, even when an aborted computes is resolved first', async () => {
+    const aTask1 = deferred<number>();
+    const aTask2 = deferred<number>();
+    const aAtom = atom(aTask1.promise);
+    const bAtom = eagerAtom((get) => get(aAtom));
+
+    // the first read produces a pending promise p1
+    const unsub = store.sub(bAtom, () => {});
+    const p1 = store.get(bAtom);
+    expect(p1).toBeInstanceOf(Promise);
+
+    // replacing aAtom's promise invalidates bAtom (it IS a direct dependency)
+    // and triggers a re-read, replacing p1 with p2 in the atom state
+    // jotai calls abortPromise(p1) → s1.abort()
+    store.set(aAtom, aTask2.promise);
+
+    // resolve the original promise after s1 is already aborted
+    aTask1.resolve(42);
+    // resolve the new dependency
+    aTask2.resolve(21);
+
+    // The first promise resolves to the value of `aTask2`, instead of it's
+    // initial `aTask1` dependency.
+    await expect(p1).resolves.toBe(21);
+
+    unsub();
+  });
+
+  it('returns promises that always resolve with the latest value, even when an aborted computation never resolves', async () => {
+    const aTask1 = deferred<number>();
+    const aTask2 = deferred<number>();
+    const aAtom = atom(aTask1.promise);
+    const bAtom = eagerAtom((get) => get(aAtom));
+
+    // the first read produces a pending promise p1
+    const unsub = store.sub(bAtom, () => {});
+    const p1 = store.get(bAtom);
+    expect(p1).toBeInstanceOf(Promise);
+
+    // replacing aAtom's promise invalidates bAtom (it IS a direct dependency)
+    // and triggers a re-read, replacing p1 with p2 in the atom state
+    // jotai calls abortPromise(p1) → s1.abort()
+    store.set(aAtom, aTask2.promise);
+
+    // resolve ONLY the new dependency
+    aTask2.resolve(21);
+
+    // The first promise resolves to the value of `aTask2`, instead of it's
+    // initial `aTask1` dependency.
+    await expect(p1).resolves.toBe(21);
+
+    unsub();
+  });
+
   describe('get.all', () => {
     it('handles sync atoms as input', async () => {
       const nameAtom = atom('Bob');
@@ -210,45 +275,6 @@ describe('eagerAtom', () => {
 				]
 			`);
     });
-  });
-
-  it('computes a chain of eager atoms synchronously on a sync dependency change', async () => {
-    const labelAtom = atom(Promise.resolve('John'));
-    const counterAtom = atom(0);
-    const prefixedAtom = eagerAtom((get) => `${get(labelAtom)}:${get(counterAtom)}`);
-    const fixedAtom = eagerAtom((get) => `${get(prefixedAtom)}:${get(labelAtom)}`);
-
-    await expect(store.get(prefixedAtom)).resolves.toMatchInlineSnapshot(`"John:0"`);
-    store.set(counterAtom, 1);
-    expect(store.get(fixedAtom)).toMatchInlineSnapshot(`"John:1:John"`);
-  });
-
-  it('returns promises that always resolve with the latest value, even when the dependencies change during computation', async () => {
-    const aTask1 = deferred<number>();
-    const aTask2 = deferred<number>();
-    const aAtom = atom(aTask1.promise);
-    const bAtom = eagerAtom((get) => get(aAtom));
-
-    // the first read produces a pending promise p1
-    const unsub = store.sub(bAtom, () => {});
-    const p1 = store.get(bAtom);
-    expect(p1).toBeInstanceOf(Promise);
-
-    // replacing aAtom's promise invalidates bAtom (it IS a direct dependency)
-    // and triggers a re-read, replacing p1 with p2 in the atom state
-    // jotai calls abortPromise(p1) → s1.abort()
-    store.set(aAtom, aTask2.promise);
-
-    // resolve the original promise after s1 is already aborted
-    aTask1.resolve(42);
-    // resolve the new dependency
-    aTask2.resolve(21);
-
-    // The first promise resolves to the value of `aTask2`, instead of it's
-    // initial `aTask1` dependency.
-    await expect(p1).resolves.toBe(21);
-
-    unsub();
   });
 
   describe('get.await', () => {

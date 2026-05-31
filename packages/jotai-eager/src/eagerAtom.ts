@@ -77,30 +77,34 @@ function resolveSuspension<T>(
     const suspended = (e as EagerError | { [NotYet]?: undefined })[NotYet];
     if (suspended) {
       // There's a pending promise
-      return suspended.then(
-        (value) => {
-          setPromiseMeta(suspended, { status: 'fulfilled', value });
-          // If the dependencies changed while the promise was pending,
-          // then we make it resolve with the result of the latest
-          // computation.
-          if (signal.aborted) {
-            return getLatest();
-          }
-          // ... otherwise we try to compute the atom again.
-          return resolveSuspension(compute, getLatest, signal);
-        },
-        (reason) => {
-          setPromiseMeta(suspended, { status: 'rejected', reason });
-          // If the dependencies changed while the promise was pending,
-          // then we make it resolve with the result of the latest
-          // computation.
-          if (signal.aborted) {
-            return getLatest();
-          }
-          // ... otherwise we throw the error we received.
-          throw reason;
-        },
-      );
+      return new Promise<T>((resolve, reject) => {
+        signal.addEventListener(
+          'abort',
+          () => {
+            // If the dependencies changed while the promise was pending,
+            // then we make it resolve with the result of the latest
+            // computation.
+            resolve(getLatest());
+          },
+          { once: true },
+        );
+
+        suspended.then(
+          (value) => {
+            setPromiseMeta(suspended, { status: 'fulfilled', value });
+            if (signal.aborted) {
+              // Already resolved by the 'abort' event handler
+              return;
+            }
+            // ... otherwise we try to compute the atom again.
+            resolve(resolveSuspension(compute, getLatest, signal));
+          },
+          (reason) => {
+            setPromiseMeta(suspended, { status: 'rejected', reason });
+            reject(reason);
+          },
+        );
+      });
     }
     // Rejecting other errors
     return Promise.reject(e);
