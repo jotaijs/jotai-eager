@@ -1,6 +1,6 @@
 {
   "name": "jotai-eager",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Jōtai utilities that help with asynchronous atoms",
   "keywords": [
     "async",
@@ -56,7 +56,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "jotai": "2.16.1",
+    "jotai": "2.20.0",
     "jotai-eager": "*",
     "typescript": "catalog:",
     "vite": "catalog:",
