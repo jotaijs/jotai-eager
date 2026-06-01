@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "jotai": "2.16.1",
+    "jotai": "2.20.0",
     "jotai-eager": "workspace:*",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
