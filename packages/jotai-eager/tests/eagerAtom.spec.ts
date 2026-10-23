@@ -106,6 +106,39 @@ describe('eagerAtom', () => {
     expect(store.get(createSafeAtom())).toEqual('fallback');
   });
 
+  it('returns a rejected promise when the read function throws a nullish value', async () => {
+    const nullAtom = eagerAtom<number>(() => {
+      throw null;
+    });
+
+    await expect(store.get(nullAtom)).rejects.toBe(null);
+  });
+
+  it('returns a rejected promise when a known dependency rejects with `undefined`', async () => {
+    const invalidAtom = atom(Promise.reject(undefined));
+    const valueAtom = eagerAtom<number>((get) => get(invalidAtom));
+
+    // the first read caches the rejection
+    await expect(store.get(valueAtom)).rejects.toBe(undefined);
+
+    const anotherValueAtom = eagerAtom<number>((get) => get(invalidAtom));
+    await expect(store.get(anotherValueAtom)).rejects.toBe(undefined);
+  });
+
+  it('rejects with `undefined` when an async dependency is fulfilled, and the read function throws `undefined`', async () => {
+    const dataTask = deferred<number>();
+    const dataAtom = atom(dataTask.promise);
+    const valueAtom = eagerAtom<number>((get) => {
+      get(dataAtom);
+      throw undefined;
+    });
+
+    const value = store.get(valueAtom);
+    dataTask.resolve(1);
+
+    await expect(value).rejects.toBe(undefined);
+  });
+
   it('derives an async atom', async () => {
     const computation = deferred<number>();
     const countAtom = atom(computation.promise);
