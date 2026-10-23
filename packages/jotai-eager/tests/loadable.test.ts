@@ -42,4 +42,21 @@ describe('loadable', () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(values).toEqual([{ state: 'hasData', data: 7 }]);
   });
+
+  it('recovers from an error once the atom has a value again', () => {
+    const store = createStore();
+    const countAtom = atom(1);
+    const throwingAtom = atom((get) => {
+      const count = get(countAtom);
+      if (count === 1) {
+        throw new Error('sync boom');
+      }
+      return count;
+    });
+    const loadableAtom = loadable(throwingAtom);
+
+    expect(store.get(loadableAtom)).toHaveProperty('state', 'hasError');
+    store.set(countAtom, 2);
+    expect(store.get(loadableAtom)).toEqual({ state: 'hasData', data: 2 });
+  });
 });
