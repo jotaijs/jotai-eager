@@ -119,71 +119,66 @@ export function withPending<Value, Args extends unknown[], Result, PendingValue>
 
   const promiseAndValueAtom: Atom<PromiseAndValue> & {
     init?: undefined;
-  } = atom(
-    (get) => {
-      get(refreshAtom);
-      const prev = get(promiseAndValueAtom) as PromiseAndValue | undefined;
-      // Errors are stored instead of thrown, as throwing would make the
-      // `get(promiseAndValueAtom)` above rethrow it in every subsequent computation.
-      const withError = (e: unknown) =>
-        (prev && 'v' in prev ? { e, v: prev.v } : { e }) as PromiseAndValue;
+  } = atom((get) => {
+    get(refreshAtom);
+    const prev = get(promiseAndValueAtom) as PromiseAndValue | undefined;
+    // Errors are stored instead of thrown, as throwing would make the
+    // `get(promiseAndValueAtom)` above rethrow it in every subsequent computation.
+    const withError = (e: unknown) =>
+      (prev && 'v' in prev ? { e, v: prev.v } : { e }) as PromiseAndValue;
 
-      let promise: Value;
-      try {
-        promise = get(anAtom);
-      } catch (error) {
-        return withError(error);
-      }
-      if (!isPromiseLike(promise)) {
-        return { v: promise as Awaited<Value> } as PromiseAndValue;
-      }
-      const meta = getPromiseMeta(promise);
-      if (meta?.status === 'fulfilled') {
-        return { p: promise, v: meta.value } as PromiseAndValue;
-      }
-      if (meta?.status === 'rejected') {
-        return { p: promise, ...withError(meta.reason) } as PromiseAndValue;
-      }
+    let promise: Value;
+    try {
+      promise = get(anAtom);
+    } catch (error) {
+      return withError(error);
+    }
+    if (!isPromiseLike(promise)) {
+      return { v: promise as Awaited<Value> } as PromiseAndValue;
+    }
+    const meta = getPromiseMeta(promise);
+    if (meta?.status === 'fulfilled') {
+      return { p: promise, v: meta.value } as PromiseAndValue;
+    }
+    if (meta?.status === 'rejected') {
+      return { p: promise, ...withError(meta.reason) } as PromiseAndValue;
+    }
 
-      if (promise !== prev?.p) {
-        promise.then(
-          (value) => {
-            setPromiseMeta(promise, { status: 'fulfilled', value });
-            const [triggerRefresh] = get(triggerRefreshAtom);
-            triggerRefresh!();
-          },
-          (reason) => {
-            setPromiseMeta(promise, { status: 'rejected', reason });
-            const [triggerRefresh] = get(triggerRefreshAtom);
-            triggerRefresh!();
-          },
-        );
-      }
+    if (promise !== prev?.p) {
+      promise.then(
+        (value) => {
+          setPromiseMeta(promise, { status: 'fulfilled', value });
+          const [triggerRefresh] = get(triggerRefreshAtom);
+          triggerRefresh!();
+        },
+        (reason) => {
+          setPromiseMeta(promise, { status: 'rejected', reason });
+          const [triggerRefresh] = get(triggerRefreshAtom);
+          triggerRefresh!();
+        },
+      );
+    }
 
-      if (prev && 'v' in prev) {
-        return {
-          p: promise,
-          f: fallback({
-            get,
-            prev: prev.v,
-            pending: promise as PromiseLike<Awaited<Value>>,
-          }),
-          v: prev.v,
-        } as PromiseAndValue;
-      }
+    if (prev && 'v' in prev) {
       return {
         p: promise,
         f: fallback({
           get,
-          prev: undefined,
+          prev: prev.v,
           pending: promise as PromiseLike<Awaited<Value>>,
         }),
+        v: prev.v,
       } as PromiseAndValue;
-    },
-    (_get, set) => {
-      set(refreshAtom, (c) => c + 1);
-    },
-  );
+    }
+    return {
+      p: promise,
+      f: fallback({
+        get,
+        prev: undefined,
+        pending: promise as PromiseLike<Awaited<Value>>,
+      }),
+    } as PromiseAndValue;
+  });
   // HACK to read PromiseAndValue atom before initialization
   promiseAndValueAtom.init = undefined;
 
