@@ -9,6 +9,18 @@ describe('withPending', () => {
     store = createStore();
   });
 
+  it('notifies subscribers once the promise settles', async () => {
+    const fooAtom = atom(new Promise<number>((resolve) => setTimeout(() => resolve(42), 10)));
+    const fooOrPendingAtom = withPending(fooAtom, () => 'FALLBACK' as const);
+    const values: unknown[] = [];
+
+    store.sub(fooOrPendingAtom, () => values.push(store.get(fooOrPendingAtom)));
+    expect(store.get(fooOrPendingAtom)).toEqual('FALLBACK');
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(values).toEqual([42]);
+  });
+
   it('falls back to `undefined` by default', async () => {
     const fooAtom = atom(Promise.resolve(123));
     const fooOrPendingAtom = withPending(fooAtom);

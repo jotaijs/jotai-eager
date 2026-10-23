@@ -29,4 +29,17 @@ describe('loadable', () => {
 
     expect(store.get(loadableAtom)).toHaveProperty('state', 'hasData');
   });
+
+  it('notifies subscribers once the promise settles', async () => {
+    const store = createStore();
+    const asyncAtom = atom(new Promise<number>((resolve) => setTimeout(() => resolve(7), 10)));
+    const loadableAtom = loadable(asyncAtom);
+    const values: unknown[] = [];
+
+    store.sub(loadableAtom, () => values.push(store.get(loadableAtom)));
+    expect(store.get(loadableAtom)).toEqual({ state: 'loading' });
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(values).toEqual([{ state: 'hasData', data: 7 }]);
+  });
 });
