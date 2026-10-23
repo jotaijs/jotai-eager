@@ -74,7 +74,7 @@ function resolveSuspension<T>(
     // be able to return a non-promise result immediately.
     return compute();
   } catch (e) {
-    const suspended = (e as EagerError | { [NotYet]?: undefined })[NotYet];
+    const suspended = (e as EagerError | { [NotYet]?: undefined } | null | undefined)?.[NotYet];
     if (suspended) {
       // There's a pending promise
       return new Promise<T>((resolve) => {
