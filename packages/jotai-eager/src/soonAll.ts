@@ -29,13 +29,15 @@ export function soonAll<T extends readonly unknown[]>(values: T): SoonAll<T> {
     return values.map((el) => getFulfilledValue(el)) as unknown as SoonAll<T>;
   }
 
-  return Promise.all(values).then((fulfilledValues) => {
-    fulfilledValues.map((fulfilled, idx) => {
-      const promise = values[idx];
-      if (isPromiseLike(promise)) {
-        setPromiseMeta(promise, { status: 'fulfilled', value: fulfilled });
-      }
-    });
-    return fulfilledValues;
-  });
+  for (const promise of values) {
+    if (isPromiseLike(promise)) {
+      // Attached before `Promise.all`, so that the meta is known by the time it settles.
+      promise.then(
+        (value) => setPromiseMeta(promise, { status: 'fulfilled', value }),
+        (reason) => setPromiseMeta(promise, { status: 'rejected', reason }),
+      );
+    }
+  }
+
+  return Promise.all(values) as SoonAll<T>;
 }
