@@ -21,7 +21,7 @@ type AwaitAtomsValues<TTuple extends readonly [Atom<unknown>, ...Atom<unknown>[]
  * @param deps An array of atoms whose values will be awaited and passed to the operation function.
  * @param op A function that takes the awaited values of the dependencies and returns a new value. It is called synchronously if all dependencies are fulfilled, otherwise asynchronously.
  * @returns An atom that resolves to the result of the operation or a promise of the result if dependencies are pending.
- * @deprecated Use `eagerAtom` for new code, as it provides a better developer experience, and matches more closely to how regualr atoms are defined.
+ * @deprecated Use `eagerAtom` for new code, as it provides a better developer experience, and matches more closely to how regular atoms are defined.
  *
  * @example
  * ```ts
