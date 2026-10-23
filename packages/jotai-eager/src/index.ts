@@ -1,4 +1,3 @@
-export { derive } from './derive.ts';
 export { eagerAtom, isEagerError } from './eagerAtom.ts';
 export { loadable } from './loadable.ts';
 export { soon } from './soon.ts';
