@@ -44,6 +44,12 @@ describe('eagerAtom', () => {
     expect(store.get(countAtom)).toEqual(1.5);
   });
 
+  it('is not writable if no write function is given', () => {
+    const doubledAtom = eagerAtom(() => 2);
+
+    expect(() => store.set(doubledAtom as never)).toThrow();
+  });
+
   it('derives a sync atom', () => {
     const countAtom = atom(12);
     const doubledAtom = eagerAtom((get) => get(countAtom) * 2);

@@ -192,7 +192,8 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
         signal,
       );
     },
-    write ?? (() => undefined as unknown as Result),
+    // Jotai only makes the atom writable if `write` is defined, matching read-only vanilla atoms.
+    write as Write<Args, Result>,
   );
 
   return resultAtom;
