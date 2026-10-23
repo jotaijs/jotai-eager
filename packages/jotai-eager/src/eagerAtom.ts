@@ -64,6 +64,50 @@ function unwrapPromise<T>(promise: T): Awaited<T> {
   return meta.value as Awaited<T>; // Fulfilled
 }
 
+/**
+ * Resolves once all `promises` are fulfilled, or as soon as any of them rejects.
+ */
+function settleAllOrAnyRejection(promises: PromiseLike<unknown>[]): Promise<void> {
+  return new Promise((resolve) => {
+    let remaining = promises.length;
+    for (const promise of promises) {
+      promise.then(
+        (value) => {
+          setPromiseMeta(promise, { status: 'fulfilled', value });
+          if (--remaining === 0) {
+            resolve();
+          }
+        },
+        (reason) => {
+          setPromiseMeta(promise, { status: 'rejected', reason });
+          resolve();
+        },
+      );
+    }
+  });
+}
+
+function unwrapPromises<T extends readonly unknown[]>(values: T): AwaitedAll<T> {
+  const pending: PromiseLike<unknown>[] = [];
+  for (const value of values) {
+    const meta = getPromiseMeta(value);
+    if (meta?.status === 'rejected') {
+      // Rejecting as soon as any of the values is known to be rejected, like `Promise.all`.
+      throw meta.reason;
+    }
+    if (meta?.status === 'pending') {
+      pending.push(value as PromiseLike<unknown>);
+    }
+  }
+
+  if (pending.length > 0) {
+    // Suspending once for all pending values, instead of once for each of them.
+    throw { [NotYet]: settleAllOrAnyRejection(pending) } satisfies EagerError;
+  }
+
+  return values.map((v) => unwrapPromise(v)) as AwaitedAll<T>;
+}
+
 function resolveSuspension<T>(
   compute: () => T,
   getLatest: () => T | Promise<T>,
@@ -176,15 +220,11 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
         unwrapPromise(get(atomToGet))) as EagerGetter;
 
       eagerGet.all = <T extends readonly Atom<unknown>[]>(atoms: T) =>
-        atoms
-          // Jump-starting every asynchronous atom.
-          .map((a) => get(a))
-          // Unwrapping them one by one, sequentially.
-          .map((v) => unwrapPromise(v)) as AwaitedAll<T>;
+        // Jump-starting every asynchronous atom.
+        unwrapPromises(atoms.map((a) => get(a))) as AwaitedAll<T>;
 
       eagerGet.await = <T>(promiseOrValue: T) => unwrapPromise(promiseOrValue);
-      eagerGet.awaitAll = <T extends readonly unknown[]>(values: T) =>
-        values.map((v) => unwrapPromise(v)) as AwaitedAll<T>;
+      eagerGet.awaitAll = <T extends readonly unknown[]>(values: T) => unwrapPromises(values);
 
       return resolveSuspension(
         () => read(eagerGet),

@@ -297,10 +297,73 @@ describe('eagerAtom', () => {
 				  ""two" computed",
 				  ""three" computed",
 				  "suspended",
-				  "suspended",
-				  "suspended",
 				]
 			`);
+    });
+
+    it('waits for all pending atoms at once, instead of one by one', async () => {
+      const aTask = deferred<number>();
+      const bTask = deferred<number>();
+      const cTask = deferred<number>();
+      const aAtom = atom(aTask.promise);
+      const bAtom = atom(bTask.promise);
+      const cAtom = atom(cTask.promise);
+      let computations = 0;
+
+      const sumAtom = eagerAtom((get) => {
+        computations++;
+        const [a, b, c] = get.all([aAtom, bAtom, cAtom]);
+        return a + b + c;
+      });
+
+      const sum = store.get(sumAtom);
+      cTask.resolve(3);
+      bTask.resolve(2);
+      aTask.resolve(1);
+
+      await expect(sum).resolves.toEqual(6);
+      expect(computations).toEqual(2);
+    });
+
+    it('rejects as soon as any pending atom rejects', async () => {
+      const error = new Error('');
+      const slowTask = deferred<number>();
+      const failingTask = deferred<number>();
+      const slowAtom = atom(slowTask.promise);
+      const failingAtom = atom(failingTask.promise);
+
+      const sumAtom = eagerAtom((get) => {
+        const [slow, failing] = get.all([slowAtom, failingAtom]);
+        return slow + failing;
+      });
+
+      const sum = store.get(sumAtom);
+      failingTask.reject(error);
+
+      await expect(sum).rejects.toThrowError(error);
+    });
+  });
+
+  describe('get.awaitAll', () => {
+    it('waits for all pending promises at once, instead of one by one', async () => {
+      const aTask = deferred<number>();
+      const bTask = deferred<number>();
+      const tasksAtom = atom({ a: aTask.promise, b: bTask.promise });
+      let computations = 0;
+
+      const sumAtom = eagerAtom((get) => {
+        computations++;
+        const { a, b } = get(tasksAtom);
+        const [aValue, bValue] = get.awaitAll([a, b]);
+        return aValue + bValue;
+      });
+
+      const sum = store.get(sumAtom);
+      bTask.resolve(2);
+      aTask.resolve(1);
+
+      await expect(sum).resolves.toEqual(3);
+      expect(computations).toEqual(2);
     });
   });
 
