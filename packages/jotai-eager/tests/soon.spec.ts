@@ -59,6 +59,22 @@ describe('soon', () => {
 
     await expect(result).rejects.toEqual({ error: 'test' });
   });
+
+  it('returns rejected promise if processing an already fulfilled promise throws', async () => {
+    const task = deferred<number>();
+    // Letting `soon` know that the promise is fulfilled
+    const first = soon(task.promise, (value) => value);
+    task.resolve(1);
+    await first;
+
+    const error = new Error('');
+    const result = soon(task.promise, () => {
+      throw error;
+    });
+
+    expect(result).toBeInstanceOf(Promise);
+    await expect(result).rejects.toThrowError(error);
+  });
 });
 
 describe('soon (in atoms)', () => {
