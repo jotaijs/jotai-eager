@@ -56,13 +56,13 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "jotai": "2.20.0",
+    "jotai": "3.0.1",
     "jotai-eager": "*",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "jotai": ">=2.0.0"
+    "jotai": ">=3.0.0"
   }
 }

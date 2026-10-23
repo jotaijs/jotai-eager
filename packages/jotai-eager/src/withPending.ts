@@ -106,15 +106,20 @@ export function withPending<Value, Args extends unknown[], Result, PendingValue>
     | { readonly f: PendingValue; readonly v?: Awaited<Value> }
   );
   const refreshAtom = atom(0);
+  const triggerRefreshAtom = atom([] as [triggerRefresh?: () => void]);
+  triggerRefreshAtom.INTERNAL_onInit = (store) => {
+    store.set(triggerRefreshAtom, [() => store.set(refreshAtom, (c) => c + 1)]);
+  };
 
   if (import.meta.env?.MODE !== 'production') {
     refreshAtom.debugPrivate = true;
+    triggerRefreshAtom.debugPrivate = true;
   }
 
-  const promiseAndValueAtom: WritableAtom<PromiseAndValue, [], void> & {
+  const promiseAndValueAtom: Atom<PromiseAndValue> & {
     init?: undefined;
   } = atom(
-    (get, { setSelf }) => {
+    (get) => {
       get(refreshAtom);
       const prev = get(promiseAndValueAtom) as PromiseAndValue | undefined;
       const promise = get(anAtom);
@@ -133,11 +138,13 @@ export function withPending<Value, Args extends unknown[], Result, PendingValue>
         promise.then(
           (value) => {
             setPromiseMeta(promise, { status: 'fulfilled', value });
-            setSelf();
+            const [triggerRefresh] = get(triggerRefreshAtom);
+            triggerRefresh!();
           },
           (reason) => {
             setPromiseMeta(promise, { status: 'rejected', reason });
-            setSelf();
+            const [triggerRefresh] = get(triggerRefreshAtom);
+            triggerRefresh!();
           },
         );
       }
