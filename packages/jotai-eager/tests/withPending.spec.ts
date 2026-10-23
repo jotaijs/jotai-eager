@@ -154,4 +154,51 @@ describe('withPending', () => {
     await new Promise((r) => setTimeout(r));
     expect(results).toEqual(['effect undefined', 'effect value']);
   });
+
+  it('recovers after the promise rejects', async () => {
+    const fooAtom = atom<Promise<number>>(Promise.reject(new Error('boom')));
+    const fooOrPendingAtom = withPending(fooAtom, () => 'PENDING' as const);
+
+    expect(store.get(fooOrPendingAtom)).toEqual('PENDING');
+    await new Promise((r) => setTimeout(r)); // wait for a tick
+    expect(() => store.get(fooOrPendingAtom)).toThrow('boom');
+
+    store.set(fooAtom, Promise.resolve(5));
+    expect(store.get(fooOrPendingAtom)).toEqual('PENDING');
+    await new Promise((r) => setTimeout(r)); // wait for a tick
+    expect(store.get(fooOrPendingAtom)).toEqual(5);
+  });
+
+  it('recovers after the atom throws synchronously', () => {
+    const countAtom = atom(1);
+    const throwingAtom = atom((get) => {
+      const count = get(countAtom);
+      if (count === 1) {
+        throw new Error('sync boom');
+      }
+      return count;
+    });
+    const wrappedAtom = withPending(throwingAtom);
+
+    expect(() => store.get(wrappedAtom)).toThrow('sync boom');
+    store.set(countAtom, 2);
+    expect(store.get(wrappedAtom)).toEqual(2);
+  });
+
+  it('falls back to the last fulfilled value after recovering from an error', async () => {
+    const fooAtom = atom<Promise<number>>(Promise.resolve(1));
+    const fooOrPendingAtom = withPending(fooAtom, ({ prev }) => prev ?? 0);
+
+    store.get(fooOrPendingAtom);
+    await new Promise((r) => setTimeout(r)); // wait for a tick
+    expect(store.get(fooOrPendingAtom)).toEqual(1);
+
+    store.set(fooAtom, Promise.reject(new Error('boom')));
+    store.get(fooOrPendingAtom);
+    await new Promise((r) => setTimeout(r)); // wait for a tick
+    expect(() => store.get(fooOrPendingAtom)).toThrow('boom');
+
+    store.set(fooAtom, new Promise<number>(() => {}));
+    expect(store.get(fooOrPendingAtom)).toEqual(1 /* last fulfilled value */);
+  });
 });

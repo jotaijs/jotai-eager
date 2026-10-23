@@ -104,6 +104,7 @@ export function withPending<Value, Args extends unknown[], Result, PendingValue>
   type PromiseAndValue = { readonly p?: PromiseLike<unknown> } & (
     | { readonly v: Awaited<Value> }
     | { readonly f: PendingValue; readonly v?: Awaited<Value> }
+    | { readonly e: unknown; readonly v?: Awaited<Value> }
   );
   const refreshAtom = atom(0);
   const triggerRefreshAtom = atom([] as [triggerRefresh?: () => void]);
@@ -122,7 +123,17 @@ export function withPending<Value, Args extends unknown[], Result, PendingValue>
     (get) => {
       get(refreshAtom);
       const prev = get(promiseAndValueAtom) as PromiseAndValue | undefined;
-      const promise = get(anAtom);
+      // Errors are stored instead of thrown, as throwing would make the
+      // `get(promiseAndValueAtom)` above rethrow it in every subsequent computation.
+      const withError = (e: unknown) =>
+        (prev && 'v' in prev ? { e, v: prev.v } : { e }) as PromiseAndValue;
+
+      let promise: Value;
+      try {
+        promise = get(anAtom);
+      } catch (error) {
+        return withError(error);
+      }
       if (!isPromiseLike(promise)) {
         return { v: promise as Awaited<Value> } as PromiseAndValue;
       }
@@ -131,7 +142,7 @@ export function withPending<Value, Args extends unknown[], Result, PendingValue>
         return { p: promise, v: meta.value } as PromiseAndValue;
       }
       if (meta?.status === 'rejected') {
-        throw meta.reason;
+        return { p: promise, ...withError(meta.reason) } as PromiseAndValue;
       }
 
       if (promise !== prev?.p) {
@@ -183,6 +194,9 @@ export function withPending<Value, Args extends unknown[], Result, PendingValue>
   return atom(
     (get) => {
       const state = get(promiseAndValueAtom);
+      if ('e' in state) {
+        throw state.e;
+      }
       if ('f' in state) {
         // is pending
         return state.f;
