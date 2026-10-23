@@ -69,7 +69,14 @@ function _soonImpl<TInput, TOutput>(
   if (meta) {
     if (meta.status === 'fulfilled') {
       // can handle the value earlier
-      return handler(meta.value);
+      try {
+        return handler(meta.value);
+      } catch (err) {
+        // To keep the error handling behavior consistent, lets
+        // always return a rejected promise, even if the processing
+        // can be done in sync.
+        return Promise.reject(err);
+      }
     }
 
     if (meta.status === 'rejected') {
