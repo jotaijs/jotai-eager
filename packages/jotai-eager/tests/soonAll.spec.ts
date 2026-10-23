@@ -1,6 +1,7 @@
-import { soonAll } from 'jotai-eager';
+import { eagerAtom, isEagerError, soonAll } from 'jotai-eager';
 import { atom, createStore } from 'jotai/vanilla';
 import { describe, expect, expectTypeOf, it } from 'vitest';
+import { deferred } from './mockUtils.ts';
 
 describe('soonAll', () => {
   it('returns the same elements if all of them are concrete values', () => {
@@ -54,6 +55,29 @@ describe('soonAll', () => {
     const result = soonAll([1, Promise.reject<number>({ error: 'test' }), 2]);
 
     await expect(result).rejects.toEqual({ error: 'test' });
+  });
+
+  it('remembers rejections, so that other jotai-eager APIs can handle them synchronously', async () => {
+    const store = createStore();
+    const error = new Error('');
+    const pendingTask = deferred<number>();
+    const failingTask = deferred<number>();
+
+    const result = soonAll([pendingTask.promise, failingTask.promise]);
+    failingTask.reject(error);
+    await expect(result).rejects.toThrowError(error);
+
+    const safeAtom = eagerAtom((get) => {
+      try {
+        return get.await(failingTask.promise);
+      } catch (e) {
+        if (isEagerError(e)) {
+          throw e;
+        }
+        return 'fallback';
+      }
+    });
+    expect(store.get(safeAtom)).toEqual('fallback');
   });
 
   it('handles an array as input', () => {
