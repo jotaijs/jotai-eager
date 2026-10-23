@@ -77,7 +77,7 @@ function resolveSuspension<T>(
     const suspended = (e as EagerError | { [NotYet]?: undefined })[NotYet];
     if (suspended) {
       // There's a pending promise
-      return new Promise<T>((resolve, reject) => {
+      return new Promise<T>((resolve) => {
         signal.addEventListener(
           'abort',
           () => {
@@ -101,7 +101,13 @@ function resolveSuspension<T>(
           },
           (reason) => {
             setPromiseMeta(suspended, { status: 'rejected', reason });
-            reject(reason);
+            if (signal.aborted) {
+              // Already resolved by the 'abort' event handler
+              return;
+            }
+            // ... otherwise we try to compute the atom again, so that the
+            // rejection can be handled by the read function itself.
+            resolve(resolveSuspension(compute, getLatest, signal));
           },
         );
       });

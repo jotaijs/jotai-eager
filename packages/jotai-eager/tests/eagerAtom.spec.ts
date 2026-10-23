@@ -79,6 +79,33 @@ describe('eagerAtom', () => {
     await expect(value).rejects.toThrowError(error);
   });
 
+  it('lets the read function catch an async dependency rejection', async () => {
+    const error = new Error('');
+    const dataTask = deferred<number>();
+    const dataAtom = atom(dataTask.promise);
+    const createSafeAtom = () =>
+      eagerAtom((get) => {
+        try {
+          return get(dataAtom);
+        } catch (e) {
+          if (isEagerError(e)) {
+            throw e;
+          }
+          return 'fallback';
+        }
+      });
+    const safeAtom = createSafeAtom();
+
+    const value = store.get(safeAtom);
+    expect(value).toBeInstanceOf(Promise);
+
+    dataTask.reject(error);
+
+    await expect(value).resolves.toEqual('fallback');
+    // Matches the behavior once the rejection is already known
+    expect(store.get(createSafeAtom())).toEqual('fallback');
+  });
+
   it('derives an async atom', async () => {
     const computation = deferred<number>();
     const countAtom = atom(computation.promise);
