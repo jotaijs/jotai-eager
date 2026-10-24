@@ -3,6 +3,13 @@ import { atom, createStore } from 'jotai/vanilla';
 import { loadable } from 'jotai-eager';
 
 describe('loadable', () => {
+  it('returns the same loadable atom for the same atom', () => {
+    const asyncAtom = atom(Promise.resolve('concrete'));
+
+    expect(loadable(asyncAtom)).toBe(loadable(asyncAtom));
+    expect(loadable(asyncAtom)).not.toBe(loadable(atom(Promise.resolve('concrete'))));
+  });
+
   it('should return fulfilled value of an already resolved async atom', async () => {
     const store = createStore();
     const asyncAtom = atom(Promise.resolve('concrete'));
