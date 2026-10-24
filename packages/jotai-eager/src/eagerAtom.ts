@@ -161,6 +161,22 @@ function resolveSuspension<T>(
   }
 }
 
+/**
+ * How many times in a row an eager atom can suspend on a new promise at the same
+ * `get.await()`/`get.awaitAll()` call before giving up, instead of retrying forever.
+ */
+const MAX_STALLED_RETRIES = 100;
+
+interface AwaitSuspension {
+  index: number;
+  error: unknown;
+}
+
+const STALLED_MESSAGE =
+  '(jotai-eager) An eager atom keeps suspending on a new promise passed to `get.await()` or `get.awaitAll()`. ' +
+  'Promises created inside of the read function are new on every computation, so it can never complete. ' +
+  'Create the promise outside of the read function instead (e.g. in an async atom read with `get(atom)`).';
+
 type AsyncReadFunctionError =
   'ERROR: The `read` function of eager atoms cannot be asynchronous, or return a Promise.';
 
@@ -213,6 +229,7 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
     : [read: Read<Value>, write?: Write<Args, Result>]
 ): WritableAtom<Promise<Value> | Value, Args, Result> {
   const [read, write] = args as [read: Read<Value>, write?: Write<Args, Result>];
+  let warnedAboutStall = false;
 
   const resultAtom: WritableAtom<Promise<Value> | Value, Args, Result> = atom(
     (get, { signal }) => {
@@ -223,14 +240,58 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
         // Jump-starting every asynchronous atom.
         unwrapPromises(atoms.map((a) => get(a))) as AwaitedAll<T>;
 
-      eagerGet.await = <T>(promiseOrValue: T) => unwrapPromise(promiseOrValue);
-      eagerGet.awaitAll = <T extends readonly unknown[]>(values: T) => unwrapPromises(values);
+      // Tracking at which `get.await()`/`get.awaitAll()` call the computation suspends, to detect
+      // promises created inside of `read`. Retrying after such a promise settles suspends at the
+      // same call again, on a brand new promise, never making progress.
+      let awaitCalls = 0;
+      let awaitSuspension: AwaitSuspension | undefined;
+      let prevSuspendedAt: number | undefined;
+      let stalledRetries = 0;
 
-      return resolveSuspension(
-        () => read(eagerGet),
-        () => get(resultAtom),
-        signal,
-      );
+      const trackAwait = <R>(unwrap: () => R): R => {
+        const index = awaitCalls++;
+        try {
+          return unwrap();
+        } catch (error) {
+          if (isEagerError(error)) {
+            awaitSuspension = { index, error };
+          }
+          throw error;
+        }
+      };
+
+      eagerGet.await = <T>(promiseOrValue: T) => trackAwait(() => unwrapPromise(promiseOrValue));
+      eagerGet.awaitAll = <T extends readonly unknown[]>(values: T) =>
+        trackAwait(() => unwrapPromises(values));
+
+      const compute = () => {
+        awaitCalls = 0;
+        awaitSuspension = undefined;
+        try {
+          return read(eagerGet);
+        } catch (e) {
+          // Assigned by `trackAwait` while running `read`, which TypeScript can't see.
+          const suspension = awaitSuspension as AwaitSuspension | undefined;
+          const suspendedAt = suspension && suspension.error === e ? suspension.index : undefined;
+          const stalled =
+            suspendedAt !== undefined &&
+            prevSuspendedAt !== undefined &&
+            suspendedAt <= prevSuspendedAt;
+          prevSuspendedAt = suspendedAt;
+          stalledRetries = stalled ? stalledRetries + 1 : 0;
+
+          if (stalled && !warnedAboutStall && import.meta.env?.MODE !== 'production') {
+            warnedAboutStall = true;
+            console.warn(STALLED_MESSAGE);
+          }
+          if (stalledRetries >= MAX_STALLED_RETRIES) {
+            throw new Error(STALLED_MESSAGE);
+          }
+          throw e;
+        }
+      };
+
+      return resolveSuspension(compute, () => get(resultAtom), signal);
     },
     // Jotai only makes the atom writable if `write` is defined, matching read-only vanilla atoms.
     write as Write<Args, Result>,
