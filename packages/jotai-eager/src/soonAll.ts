@@ -1,4 +1,4 @@
-import { getFulfilledValue, isKnown, isPromiseLike, setPromiseMeta } from './promiseMeta.ts';
+import { getFulfilledValue, isKnown, isPromiseLike, trackPromise } from './promiseMeta.ts';
 
 type PromiseOrValue<T> = Promise<T> | T;
 
@@ -32,10 +32,7 @@ export function soonAll<T extends readonly unknown[]>(values: T): SoonAll<T> {
   for (const promise of values) {
     if (isPromiseLike(promise)) {
       // Attached before `Promise.all`, so that the meta is known by the time it settles.
-      promise.then(
-        (value) => setPromiseMeta(promise, { status: 'fulfilled', value }),
-        (reason) => setPromiseMeta(promise, { status: 'rejected', reason }),
-      );
+      trackPromise(promise);
     }
   }
 
