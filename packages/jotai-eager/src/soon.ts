@@ -1,4 +1,4 @@
-import { getPromiseMeta, setPromiseMeta } from './isPromise.ts';
+import { getPromiseMeta, knownRejection, setPromiseMeta } from './promiseMeta.ts';
 
 /**
  * Executes `handler` with `data` as input synchronously if `data` is known, meaning
@@ -75,7 +75,7 @@ function _soonImpl<TInput, TOutput>(
         // To keep the error handling behavior consistent, lets
         // always return a rejected promise, even if the processing
         // can be done in sync.
-        return Promise.reject(err);
+        return knownRejection(err);
       }
     }
 
@@ -83,7 +83,7 @@ function _soonImpl<TInput, TOutput>(
       // To keep the error handling behavior consistent, lets
       // always return a rejected promise, even if the processing
       // can be done in sync.
-      return Promise.reject(meta.reason);
+      return knownRejection(meta.reason);
     }
 
     const promise = data as Promise<Awaited<TInput>>;
@@ -107,6 +107,6 @@ function _soonImpl<TInput, TOutput>(
     // To keep the error handling behavior consistent, lets
     // always return a rejected promise, even if the processing
     // can be done in sync.
-    return Promise.reject(err);
+    return knownRejection(err);
   }
 }

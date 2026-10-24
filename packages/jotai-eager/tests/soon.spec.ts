@@ -1,4 +1,4 @@
-import { soon } from 'jotai-eager';
+import { loadable, soon } from 'jotai-eager';
 import { atom, createStore } from 'jotai/vanilla';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
@@ -159,5 +159,31 @@ describe('soon (in atoms)', () => {
 
     store.set(baseAtom, 5.2); // changing value, but `flooredAtom` should still resolve to 5
     expect(numberOfCalculations).toBe(2); // no recalculations for `messageAtom`
+  });
+
+  it('exposes a sync throw to dependents without suspending', () => {
+    const store = createStore();
+    const error = new Error('sync boom');
+    const throwingAtom = atom(() =>
+      soon(1, () => {
+        throw error;
+      }),
+    );
+
+    expect(store.get(loadable(throwingAtom))).toEqual({ state: 'hasError', error });
+  });
+
+  it('exposes an already known rejection to dependents without suspending', async () => {
+    const store = createStore();
+    const error = new Error('async boom');
+    const task = deferred<number>();
+    // Letting `soon` know that the promise is rejected
+    const first = soon(task.promise, (value) => value);
+    task.reject(error);
+    await expect(first).rejects.toThrowError(error);
+
+    const rejectedAtom = atom(() => soon(task.promise, (value) => value));
+
+    expect(store.get(loadable(rejectedAtom))).toEqual({ state: 'hasError', error });
   });
 });

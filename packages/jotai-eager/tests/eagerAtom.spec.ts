@@ -1,5 +1,5 @@
 import type { Atom } from 'jotai/vanilla';
-import { eagerAtom, isEagerError } from 'jotai-eager';
+import { eagerAtom, isEagerError, loadable } from 'jotai-eager';
 import { atom, createStore } from 'jotai/vanilla';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { deferred } from './mockUtils.ts';
@@ -67,6 +67,26 @@ describe('eagerAtom', () => {
     const doubledAtom = eagerAtom((get) => get(invalidAtom) * 2);
 
     await expect(store.get(doubledAtom)).rejects.toThrowError(error);
+  });
+
+  it('lets dependents handle a sync throw without suspending', () => {
+    const error = new Error('sync boom');
+    const invalidAtom = eagerAtom((): number => {
+      throw error;
+    });
+    const dependentAtom = eagerAtom((get) => {
+      try {
+        return get(invalidAtom);
+      } catch (e) {
+        if (isEagerError(e)) {
+          throw e;
+        }
+        return e;
+      }
+    });
+
+    expect(store.get(dependentAtom)).toBe(error);
+    expect(store.get(loadable(invalidAtom))).toEqual({ state: 'hasError', error });
   });
 
   it('returns a rejected promise on async dependency throw', async () => {

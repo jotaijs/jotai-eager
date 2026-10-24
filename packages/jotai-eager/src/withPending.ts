@@ -1,7 +1,7 @@
 import { atom } from 'jotai/vanilla';
 import type { Getter } from 'jotai/vanilla';
 import type { Atom, WritableAtom } from 'jotai/vanilla';
-import { getPromiseMeta, setPromiseMeta, isPromiseLike } from './isPromise.ts';
+import { getPromiseMeta, setPromiseMeta, isPromiseLike } from './promiseMeta.ts';
 
 const defaultFallback = () => undefined;
 
@@ -159,25 +159,18 @@ export function withPending<Value, Args extends unknown[], Result, PendingValue>
       );
     }
 
-    if (prev && 'v' in prev) {
-      return {
-        p: promise,
-        f: fallback({
-          get,
-          prev: prev.v,
-          pending: promise as PromiseLike<Awaited<Value>>,
-        }),
-        v: prev.v,
-      } as PromiseAndValue;
-    }
-    return {
-      p: promise,
-      f: fallback({
+    const prevValue = prev && 'v' in prev ? { v: prev.v } : {};
+    let f: PendingValue;
+    try {
+      f = fallback({
         get,
-        prev: undefined,
+        prev: prevValue.v,
         pending: promise as PromiseLike<Awaited<Value>>,
-      }),
-    } as PromiseAndValue;
+      });
+    } catch (error) {
+      return { p: promise, ...withError(error) } as PromiseAndValue;
+    }
+    return { p: promise, f, ...prevValue } as PromiseAndValue;
   });
   // HACK to read PromiseAndValue atom before initialization
   promiseAndValueAtom.init = undefined;

@@ -1,4 +1,4 @@
-import { getFulfilledValue, isKnown, isPromiseLike, setPromiseMeta } from './isPromise.ts';
+import { getFulfilledValue, isKnown, isPromiseLike, setPromiseMeta } from './promiseMeta.ts';
 
 type PromiseOrValue<T> = Promise<T> | T;
 

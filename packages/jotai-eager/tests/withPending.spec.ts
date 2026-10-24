@@ -185,6 +185,23 @@ describe('withPending', () => {
     expect(store.get(wrappedAtom)).toEqual(2);
   });
 
+  it('recovers after the fallback throws', () => {
+    const fooAtom = atom<Promise<number> | number>(new Promise<number>(() => {}));
+    const shouldThrowAtom = atom(true);
+    const fooOrPendingAtom = withPending(fooAtom, ({ get }) => {
+      if (get(shouldThrowAtom)) {
+        throw new Error('fallback boom');
+      }
+      return 'PENDING' as const;
+    });
+
+    expect(() => store.get(fooOrPendingAtom)).toThrow('fallback boom');
+    store.set(shouldThrowAtom, false);
+    expect(store.get(fooOrPendingAtom)).toEqual('PENDING');
+    store.set(fooAtom, 5);
+    expect(store.get(fooOrPendingAtom)).toEqual(5);
+  });
+
   it('falls back to the last fulfilled value after recovering from an error', async () => {
     const fooAtom = atom<Promise<number>>(Promise.resolve(1));
     const fooOrPendingAtom = withPending(fooAtom, ({ prev }) => prev ?? 0);
