@@ -6,6 +6,10 @@ export type AwaitedAll<T extends readonly unknown[]> = {
   [K in keyof T]: Awaited<T[K] extends Atom<infer Value> ? Value : T[K]>;
 };
 
+export type AwaitedValues<T extends readonly unknown[]> = {
+  [K in keyof T]: Awaited<T[K]>;
+};
+
 interface EagerGetter {
   /**
    * Retrieves the atom's fulfilled value.
@@ -24,7 +28,7 @@ interface EagerGetter {
    * If the values are not yet available, it interrupts the execution
    * of the eager atom until they're available.
    */
-  awaitAll<T extends readonly unknown[]>(args: T): AwaitedAll<T>;
+  awaitAll<T extends readonly unknown[]>(args: T): AwaitedValues<T>;
   /**
    * Retrieves the fulfilled value of all passed in atoms.
    * If the values are not yet available, it interrupts the execution
@@ -87,7 +91,7 @@ function settleAllOrAnyRejection(promises: PromiseLike<unknown>[]): Promise<void
   });
 }
 
-function unwrapPromises<T extends readonly unknown[]>(values: T): AwaitedAll<T> {
+function unwrapPromises<T extends readonly unknown[]>(values: T): AwaitedValues<T> {
   const pending: PromiseLike<unknown>[] = [];
   for (const value of values) {
     const meta = getPromiseMeta(value);
@@ -105,7 +109,7 @@ function unwrapPromises<T extends readonly unknown[]>(values: T): AwaitedAll<T> 
     throw { [NotYet]: settleAllOrAnyRejection(pending) } satisfies EagerError;
   }
 
-  return values.map((v) => unwrapPromise(v)) as AwaitedAll<T>;
+  return values.map((v) => unwrapPromise(v)) as AwaitedValues<T>;
 }
 
 function resolveSuspension<T>(

@@ -17,6 +17,17 @@ describe('soon', () => {
     expectTypeOf(wrapped).toEqualTypeOf<{ inside: number } | Promise<{ inside: number }>>();
   });
 
+  it('correctly infers type when used data-last', async () => {
+    const toUpper = soon((str: string) => str.toUpperCase());
+
+    expectTypeOf(toUpper).toEqualTypeOf<
+      (data: string | PromiseLike<string>) => string | Promise<string>
+    >();
+
+    expect(toUpper('hello')).toEqual('HELLO');
+    await expect(toUpper(Promise.resolve('hello'))).resolves.toEqual('HELLO');
+  });
+
   it('processes sync and async data as soon as possible', async () => {
     const multiply = ([a, b]: readonly [number, number]) => a * b;
 

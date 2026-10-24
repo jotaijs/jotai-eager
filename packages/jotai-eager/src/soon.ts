@@ -42,8 +42,8 @@ export function soon<TInput, TOutput>(
  * ```
  */
 export function soon<TInput, TOutput>(
-  handler: (knownData: NoInfer<Awaited<TInput>>) => TOutput,
-): (data: TInput) => TOutput | Promise<Awaited<TOutput>>;
+  handler: (knownData: Awaited<TInput>) => TOutput,
+): (data: TInput | PromiseLike<Awaited<TInput>>) => TOutput | Promise<Awaited<TOutput>>;
 
 export function soon<TInput, TOutput>(
   first: TInput | ((knownData: NoInfer<Awaited<TInput>>) => TOutput),
