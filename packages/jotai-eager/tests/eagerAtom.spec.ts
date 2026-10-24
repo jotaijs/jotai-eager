@@ -360,6 +360,55 @@ describe('eagerAtom', () => {
 			`);
     });
 
+    it('jump-starts all async atoms even if one throws synchronously', async () => {
+      const error = new Error('sync boom');
+      const events: string[] = [];
+      const throwingAtom = atom((): number => {
+        throw error;
+      });
+      const twoAtom = atom(async () => {
+        events.push('"two" computed');
+        return 2;
+      });
+
+      const sumAtom = eagerAtom((get) => {
+        const [one, two] = get.all([throwingAtom, twoAtom]);
+        return one + two;
+      });
+
+      await expect(store.get(sumAtom)).rejects.toBe(error);
+      expect(events).toEqual(['"two" computed']);
+    });
+
+    it('depends on all atoms even if one throws synchronously', async () => {
+      const shouldThrowAtom = atom(true);
+      const throwingAtom = atom((get) => {
+        if (get(shouldThrowAtom)) {
+          throw new Error('sync boom');
+        }
+        return 1;
+      });
+      const countAtom = atom(2);
+
+      const sumAtom = eagerAtom((get) => {
+        const [one, count] = get.all([throwingAtom, countAtom]);
+        return one + count;
+      });
+
+      const values: unknown[] = [];
+      const unsub = store.sub(sumAtom, () => values.push(store.get(sumAtom)));
+      await expect(store.get(sumAtom)).rejects.toThrow('sync boom');
+
+      // Changing an atom after the throwing one still recomputes the eager atom.
+      store.set(countAtom, 3);
+      expect(values).toHaveLength(1);
+      await expect(values[0]).rejects.toThrow('sync boom');
+
+      store.set(shouldThrowAtom, false);
+      expect(store.get(sumAtom)).toEqual(4);
+      unsub();
+    });
+
     it('waits for all pending atoms at once, instead of one by one', async () => {
       const aTask = deferred<number>();
       const bTask = deferred<number>();
