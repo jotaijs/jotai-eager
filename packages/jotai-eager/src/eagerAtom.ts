@@ -219,9 +219,23 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
       const eagerGet = (<Value>(atomToGet: Atom<Value>): Awaited<Value> =>
         unwrapPromise(get(atomToGet))) as EagerGetter;
 
-      eagerGet.all = <T extends readonly Atom<unknown>[]>(atoms: T) =>
-        // Jump-starting every asynchronous atom.
-        unwrapPromises(atoms.map((a) => get(a))) as AwaitedAll<T>;
+      eagerGet.all = <T extends readonly Atom<unknown>[]>(atoms: T) => {
+        // Jump-starting every asynchronous atom, and depending on all of them,
+        // even if some of them throw synchronously.
+        let syncError: { reason: unknown } | undefined;
+        const values = atoms.map((a) => {
+          try {
+            return get(a);
+          } catch (reason) {
+            syncError ??= { reason };
+            return undefined;
+          }
+        });
+        if (syncError) {
+          throw syncError.reason;
+        }
+        return unwrapPromises(values) as AwaitedAll<T>;
+      };
 
       eagerGet.await = <T>(promiseOrValue: T) => unwrapPromise(promiseOrValue);
       eagerGet.awaitAll = <T extends readonly unknown[]>(values: T) => unwrapPromises(values);
