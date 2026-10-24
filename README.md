@@ -149,11 +149,12 @@ const fooAtom = eagerAtom((get) => {
 Since the read function is 'retried' after a Promise we await is fulfilled, the mechanism expects
 the same promise to be passed into `get.await` the second time around. Since we are creating the
 Promise inside of the read function itself, that will never be the case, and we'll be stuck in an infinite loop.
+jotai-eager detects this case, warns about it in development, and rejects after 100 such retries in a row.
 
 ```ts
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// This atom will be stuck in an infinite loop :(
+// This atom will never resolve, and will eventually reject :(
 const deferredNumberAtom = eagerAtom((get) => {
   get.await(sleep(1000)); // Waiting for a second...
   return 123;

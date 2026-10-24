@@ -491,5 +491,26 @@ describe('eagerAtom', () => {
 
       await expect(store.get(statusAtom)).resolves.toEqual('success');
     });
+
+    it('rejects instead of retrying forever when awaiting a promise created inside of read', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const valueAtom = eagerAtom((get) => get.await(Promise.resolve(1)));
+      const valuesAtom = eagerAtom((get) => get.awaitAll([Promise.resolve(1)]));
+
+      await expect(store.get(valueAtom)).rejects.toThrow('keeps suspending on a new promise');
+      await expect(store.get(valuesAtom)).rejects.toThrow('keeps suspending on a new promise');
+      expect(warn).toHaveBeenCalledTimes(2); // once per atom
+      warn.mockRestore();
+    });
+
+    it('does not mistake many sequential awaits for promises created inside of read', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const promises = Array.from({ length: 150 }, (_, i) => Promise.resolve(i));
+      const sumAtom = eagerAtom((get) => promises.reduce((sum, p) => sum + get.await(p), 0));
+
+      await expect(store.get(sumAtom)).resolves.toEqual((149 * 150) / 2);
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
   });
 });
