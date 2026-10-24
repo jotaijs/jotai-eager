@@ -1,5 +1,4 @@
-import { getPromiseMeta, setPromiseMeta } from './isPromise.ts';
-import { knownRejection } from './knownRejection.ts';
+import { getPromiseMeta, knownRejection, setPromiseMeta } from './promiseMeta.ts';
 
 /**
  * Executes `handler` with `data` as input synchronously if `data` is known, meaning

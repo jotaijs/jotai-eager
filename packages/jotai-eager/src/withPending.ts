@@ -1,7 +1,7 @@
 import { atom } from 'jotai/vanilla';
 import type { Getter } from 'jotai/vanilla';
 import type { Atom, WritableAtom } from 'jotai/vanilla';
-import { getPromiseMeta, setPromiseMeta, isPromiseLike } from './isPromise.ts';
+import { getPromiseMeta, setPromiseMeta, isPromiseLike } from './promiseMeta.ts';
 
 const defaultFallback = () => undefined;
 
