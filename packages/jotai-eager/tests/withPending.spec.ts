@@ -121,6 +121,14 @@ describe('withPending', () => {
     expect(store.get(syncAtom)).toBe(3);
   });
 
+  it('is not writable if the wrapped atom is read-only', () => {
+    const readOnlyAtom = atom(() => Promise.resolve(1));
+    const wrappedAtom = withPending(readOnlyAtom);
+
+    expect('write' in wrappedAtom).toBe(false);
+    expect('write' in withPending(atom(Promise.resolve(1)))).toBe(true);
+  });
+
   it('should unwrap to a fulfilled value of an already resolved async atom', async () => {
     const asyncAtom = atom(Promise.resolve('concrete'));
     const syncAtom = withPending(asyncAtom);

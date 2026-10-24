@@ -1,5 +1,5 @@
 import { atom } from 'jotai/vanilla';
-import type { Getter } from 'jotai/vanilla';
+import type { Getter, Setter } from 'jotai/vanilla';
 import type { Atom, WritableAtom } from 'jotai/vanilla';
 import { getPromiseMeta, setPromiseMeta, isPromiseLike } from './isPromise.ts';
 
@@ -186,6 +186,12 @@ export function withPending<Value, Args extends unknown[], Result, PendingValue>
     promiseAndValueAtom.debugPrivate = true;
   }
 
+  const write =
+    'write' in anAtom
+      ? (_get: Getter, set: Setter, ...args: unknown[]) =>
+          set(anAtom as WritableAtom<Value, unknown[], unknown>, ...args)
+      : undefined;
+
   return atom(
     (get) => {
       const state = get(promiseAndValueAtom);
@@ -198,6 +204,7 @@ export function withPending<Value, Args extends unknown[], Result, PendingValue>
       }
       return state.v;
     },
-    (_get, set, ...args) => set(anAtom as WritableAtom<Value, unknown[], unknown>, ...args),
+    // Jotai only makes the atom writable if `write` is defined, so read-only atoms stay read-only.
+    write as NonNullable<typeof write>,
   );
 }
