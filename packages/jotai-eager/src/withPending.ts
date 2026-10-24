@@ -1,5 +1,5 @@
 import { atom } from 'jotai/vanilla';
-import type { Getter, Setter } from 'jotai/vanilla';
+import type { ExtractAtomValue, Getter, Setter } from 'jotai/vanilla';
 import type { Atom, WritableAtom } from 'jotai/vanilla';
 import { getPromiseMeta, setPromiseMeta, isPromiseLike } from './promiseMeta.ts';
 
@@ -12,6 +12,14 @@ export interface WithPendingContext<Value> {
 }
 
 /**
+ * The atom returned by `withPending`. Writable atoms stay writable, and read-only atoms stay read-only.
+ */
+export type WithPendingAtom<TAtom extends Atom<unknown>, PendingValue> =
+  TAtom extends WritableAtom<infer Value, infer Args, infer Result>
+    ? WritableAtom<Awaited<Value> | PendingValue, Args, Result>
+    : Atom<Awaited<ExtractAtomValue<TAtom>> | PendingValue>;
+
+/**
  * Wraps an atom to handle pending states by returning a fallback value while the atom's value is unresolved, optionally using a custom fallback function.
  * Intended as an alternative to Jotai's `unwrap`, providing enhanced pending state handling.
  *
@@ -28,9 +36,9 @@ export interface WithPendingContext<Value> {
  * // wrappedAtom returns 'data' when resolved, or undefined while pending
  * ```
  */
-export function withPending<Value, Args extends unknown[], Result>(
-  anAtom: WritableAtom<Value, Args, Result>,
-): WritableAtom<Awaited<Value> | undefined, Args, Result>;
+export function withPending<TAtom extends Atom<unknown>>(
+  anAtom: TAtom,
+): WithPendingAtom<TAtom, undefined>;
 
 /**
  * Wraps an atom to handle pending states by returning a fallback value while the atom's value is unresolved, optionally using a custom fallback function.
@@ -50,52 +58,10 @@ export function withPending<Value, Args extends unknown[], Result>(
  * // wrappedAtom returns 'data' when resolved, or 'Loading...' while pending
  * ```
  */
-export function withPending<Value, Args extends unknown[], Result, PendingValue>(
-  anAtom: WritableAtom<Value, Args, Result>,
-  fallback: (ctx: WithPendingContext<Value>) => PendingValue,
-): WritableAtom<Awaited<Value> | PendingValue, Args, Result>;
-
-/**
- * Wraps an atom to handle pending states by returning a fallback value while the atom's value is unresolved, optionally using a custom fallback function.
- * Intended as an alternative to Jotai's `unwrap`, providing enhanced pending state handling.
- *
- * @param anAtom The atom to wrap, which may resolve asynchronously.
- * @returns An atom that returns the resolved value or undefined while pending.
- *
- * @example
- * ```ts
- * import { atom } from 'jotai';
- * import { withPending } from 'jotai-eager';
- *
- * const asyncAtom = atom(Promise.resolve('data'));
- * const wrappedAtom = withPending(asyncAtom);
- * // wrappedAtom returns 'data' when resolved, or undefined while pending
- * ```
- */
-export function withPending<Value>(anAtom: Atom<Value>): Atom<Awaited<Value> | undefined>;
-
-/**
- * Wraps an atom to handle pending states by returning a fallback value while the atom's value is unresolved, optionally using a custom fallback function.
- * Intended as an alternative to Jotai's `unwrap`, providing enhanced pending state handling.
- *
- * @param anAtom The atom to wrap, which may resolve asynchronously.
- * @param fallback A function that receives context (getter, previous value, pending promise) and returns a value to use while pending.
- * @returns An atom that returns the resolved value or the fallback while pending.
- *
- * @example
- * ```ts
- * import { atom } from 'jotai';
- * import { withPending } from 'jotai-eager';
- *
- * const asyncAtom = atom(Promise.resolve('data'));
- * const wrappedAtom = withPending(asyncAtom, () => 'Loading...');
- * // wrappedAtom returns 'data' when resolved, or 'Loading...' while pending
- * ```
- */
-export function withPending<Value, PendingValue>(
-  anAtom: Atom<Value>,
-  fallback: (ctx: WithPendingContext<Value>) => PendingValue,
-): Atom<Awaited<Value> | PendingValue>;
+export function withPending<TAtom extends Atom<unknown>, PendingValue>(
+  anAtom: TAtom,
+  fallback: (ctx: WithPendingContext<ExtractAtomValue<TAtom>>) => PendingValue,
+): WithPendingAtom<TAtom, PendingValue>;
 
 export function withPending<Value, Args extends unknown[], Result, PendingValue>(
   anAtom: WritableAtom<Value, Args, Result> | Atom<Value>,
