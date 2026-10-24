@@ -54,6 +54,35 @@ describe('eagerAtom', () => {
     expect(store.get(countAtom)).toEqual(1.5);
   });
 
+  it('only creates an AbortController when suspending', async () => {
+    const OriginalAbortController = globalThis.AbortController;
+    let created = 0;
+    globalThis.AbortController = class extends OriginalAbortController {
+      constructor() {
+        super();
+        created++;
+      }
+    };
+
+    try {
+      const countAtom = atom(1);
+      const syncAtom = eagerAtom((get) => get(countAtom) * 2);
+      expect(store.get(syncAtom)).toEqual(2);
+      expect(created).toEqual(0);
+
+      const task = deferred<number>();
+      const pendingAtom = atom(task.promise);
+      const asyncAtom = eagerAtom((get) => get(pendingAtom) * 2);
+      const result = store.get(asyncAtom);
+      expect(created).toEqual(1);
+
+      task.resolve(2);
+      await expect(result).resolves.toEqual(4);
+    } finally {
+      globalThis.AbortController = OriginalAbortController;
+    }
+  });
+
   it('is not writable if no write function is given', () => {
     const doubledAtom = eagerAtom(() => 2);
 
