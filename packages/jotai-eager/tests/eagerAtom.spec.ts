@@ -1,5 +1,6 @@
 import type { Atom } from 'jotai/vanilla';
 import { eagerAtom, isEagerError, loadable } from 'jotai-eager';
+import type { EagerError } from 'jotai-eager';
 import { atom, createStore } from 'jotai/vanilla';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { deferred } from './mockUtils.ts';
@@ -534,5 +535,32 @@ describe('eagerAtom', () => {
       expect(warn).not.toHaveBeenCalled();
       warn.mockRestore();
     });
+  });
+});
+
+describe('isEagerError', () => {
+  it('detects suspensions, and narrows them to EagerError', () => {
+    const task = deferred<number>();
+    const pendingAtom = atom(task.promise);
+    let caught: unknown = undefined;
+
+    const store = createStore();
+    store.get(
+      eagerAtom((get) => {
+        try {
+          return get(pendingAtom);
+        } catch (e) {
+          caught = e;
+          if (isEagerError(e)) {
+            expectTypeOf(e).toEqualTypeOf<EagerError>();
+          }
+          throw e;
+        }
+      }),
+    );
+
+    expect(isEagerError(caught)).toBe(true);
+    expect(isEagerError(new Error('not eager'))).toBe(false);
+    expect(isEagerError(null)).toBe(false);
   });
 });
