@@ -1,6 +1,7 @@
 import { atom } from 'jotai/vanilla';
 import type { Atom, WritableAtom, Getter, Setter } from 'jotai/vanilla';
 import { getPromiseMeta, knownRejection, setPromiseMeta } from './promiseMeta.ts';
+import type { PromiseMeta } from './promiseMeta.ts';
 
 export type AwaitedAll<T extends readonly unknown[]> = {
   [K in keyof T]: Awaited<T[K] extends Atom<infer Value> ? Value : T[K]>;
@@ -137,26 +138,20 @@ function resolveSuspension<T>(
           { once: true },
         );
 
+        const retry = (meta: PromiseMeta<unknown>) => {
+          setPromiseMeta(suspended, meta);
+          if (signal.aborted) {
+            // Already resolved by the 'abort' event handler
+            return;
+          }
+          // ... otherwise we try to compute the atom again. On rejection, this
+          // lets the read function itself handle the error.
+          resolve(resolveSuspension(compute, getLatest, signal));
+        };
+
         suspended.then(
-          (value) => {
-            setPromiseMeta(suspended, { status: 'fulfilled', value });
-            if (signal.aborted) {
-              // Already resolved by the 'abort' event handler
-              return;
-            }
-            // ... otherwise we try to compute the atom again.
-            resolve(resolveSuspension(compute, getLatest, signal));
-          },
-          (reason) => {
-            setPromiseMeta(suspended, { status: 'rejected', reason });
-            if (signal.aborted) {
-              // Already resolved by the 'abort' event handler
-              return;
-            }
-            // ... otherwise we try to compute the atom again, so that the
-            // rejection can be handled by the read function itself.
-            resolve(resolveSuspension(compute, getLatest, signal));
-          },
+          (value) => retry({ status: 'fulfilled', value }),
+          (reason) => retry({ status: 'rejected', reason }),
         );
       });
     }
