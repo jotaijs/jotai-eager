@@ -3,7 +3,7 @@ import { eagerAtom, isEagerError, loadable } from 'jotai-eager';
 import { atom, createStore } from 'jotai/vanilla';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { deferred } from './mockUtils.ts';
-import type { AwaitedAll } from '../src/eagerAtom.ts';
+import type { AwaitedAll, AwaitedValues } from '../src/eagerAtom.ts';
 
 describe('AwaitedAll<T>', () => {
   it('resolves a tuple of atoms to a tuple of their awaited values', () => {
@@ -14,6 +14,16 @@ describe('AwaitedAll<T>', () => {
 
   it('resolves a tuple of Promises to their awaited values', () => {
     expectTypeOf<AwaitedAll<[1, Promise<2>]>>().toEqualTypeOf<[1, 2]>();
+  });
+});
+
+describe('AwaitedValues<T>', () => {
+  it('resolves a tuple of Promises to their awaited values', () => {
+    expectTypeOf<AwaitedValues<[1, Promise<2>]>>().toEqualTypeOf<[1, 2]>();
+  });
+
+  it('leaves atoms as they are', () => {
+    expectTypeOf<AwaitedValues<[Atom<1>, Promise<2>]>>().toEqualTypeOf<[Atom<1>, 2]>();
   });
 });
 
@@ -472,6 +482,18 @@ describe('eagerAtom', () => {
 
       await expect(sum).resolves.toEqual(3);
       expect(computations).toEqual(2);
+    });
+
+    it('passes non-promise values through as they are, including atoms', () => {
+      const innerAtom = atom(5);
+
+      const valuesAtom = eagerAtom((get) => {
+        const [inner, value] = get.awaitAll([innerAtom, 1] as const);
+        expectTypeOf(inner).toEqualTypeOf<typeof innerAtom>();
+        return [inner, value] as const;
+      });
+
+      expect(store.get(valuesAtom)).toEqual([innerAtom, 1]);
     });
   });
 
