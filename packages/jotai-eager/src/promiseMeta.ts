@@ -12,7 +12,7 @@ interface PromiseMetaRejected {
   reason: unknown;
 }
 
-type PromiseMeta<T> = PromiseMetaPending | PromiseMetaFulfilled<T> | PromiseMetaRejected;
+export type PromiseMeta<T> = PromiseMetaPending | PromiseMetaFulfilled<T> | PromiseMetaRejected;
 
 const PENDING: PromiseMetaPending = { status: 'pending' } as const;
 const promiseMetaCache = new WeakMap<object, PromiseMeta<unknown>>();
