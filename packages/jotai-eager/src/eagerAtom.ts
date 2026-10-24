@@ -1,6 +1,7 @@
 import { atom } from 'jotai/vanilla';
 import type { Atom, WritableAtom, Getter, Setter } from 'jotai/vanilla';
-import { getPromiseMeta, knownRejection, setPromiseMeta } from './isPromise.ts';
+import { getPromiseMeta, setPromiseMeta } from './isPromise.ts';
+import { knownRejection } from './knownRejection.ts';
 
 export type AwaitedAll<T extends readonly unknown[]> = {
   [K in keyof T]: Awaited<T[K] extends Atom<infer Value> ? Value : T[K]>;

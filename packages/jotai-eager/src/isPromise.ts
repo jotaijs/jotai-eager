@@ -34,16 +34,6 @@ export function setPromiseMeta<T>(promise: PromiseLike<T>, meta: PromiseMeta<T>)
 }
 
 /**
- * Like `Promise.reject`, but the rejection is known right away, so that
- * consumers can handle it without suspending.
- */
-export function knownRejection<T = never>(reason: unknown): Promise<T> {
-  const promise = Promise.reject(reason) as Promise<T>;
-  setPromiseMeta(promise, { status: 'rejected', reason });
-  return promise;
-}
-
-/**
  * If it's a non promise, or a fulfilled promise.
  */
 export function isKnown<T>(value: PromiseLike<T> | unknown): boolean {
