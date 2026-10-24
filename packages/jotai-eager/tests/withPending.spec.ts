@@ -1,6 +1,51 @@
 import { atom, createStore } from 'jotai/vanilla';
-import { beforeEach, describe, expect, it } from 'vitest';
+import type { Atom, PrimitiveAtom, SetStateAction, WritableAtom } from 'jotai/vanilla';
+import { beforeEach, describe, expect, expectTypeOf, it } from 'vitest';
 import { withPending } from 'jotai-eager';
+import type { WithPendingContext } from '../src/withPending.ts';
+
+describe('withPending types', () => {
+  it('keeps writable atoms writable, with or without a fallback', () => {
+    const primitiveAtom = atom(Promise.resolve(1));
+    expectTypeOf(withPending(primitiveAtom)).toEqualTypeOf<
+      WritableAtom<number | undefined, [SetStateAction<Promise<number>>], void>
+    >();
+    expectTypeOf(withPending(primitiveAtom, () => 'pending' as const)).toEqualTypeOf<
+      WritableAtom<number | 'pending', [SetStateAction<Promise<number>>], void>
+    >();
+
+    const customAtom = atom(
+      async () => 'value',
+      (_get, _set, input: number) => input > 0,
+    );
+    expectTypeOf(withPending(customAtom)).toEqualTypeOf<
+      WritableAtom<string | undefined, [input: number], boolean>
+    >();
+  });
+
+  it('keeps read-only atoms read-only, with or without a fallback', () => {
+    const readOnlyAtom = atom(async () => 'value');
+    expectTypeOf(withPending(readOnlyAtom)).toEqualTypeOf<Atom<string | undefined>>();
+    expectTypeOf(withPending(readOnlyAtom, () => 0)).toEqualTypeOf<Atom<string | number>>();
+
+    const syncAtom = atom(() => 1);
+    expectTypeOf(withPending(syncAtom)).toEqualTypeOf<Atom<number | undefined>>();
+  });
+
+  it('infers the fallback context from the atom', () => {
+    const readOnlyAtom = atom(async () => 'value');
+    withPending(readOnlyAtom, (ctx) => {
+      expectTypeOf(ctx).toEqualTypeOf<WithPendingContext<Promise<string>>>();
+      return ctx.prev;
+    });
+
+    const primitiveAtom: PrimitiveAtom<Promise<number>> = atom(Promise.resolve(1));
+    withPending(primitiveAtom, (ctx) => {
+      expectTypeOf(ctx).toEqualTypeOf<WithPendingContext<Promise<number>>>();
+      return ctx.prev;
+    });
+  });
+});
 
 describe('withPending', () => {
   let store: ReturnType<typeof createStore>;
