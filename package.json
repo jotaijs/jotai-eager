@@ -12,12 +12,12 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "automd": "^0.4.0",
-    "happy-dom": "^17.4.4",
+    "automd": "^0.4.3",
+    "happy-dom": "^21.0.4",
     "oxfmt": "^0.23.0",
-    "oxlint": "^1.38.0",
+    "oxlint": "^1.89.0",
     "typescript": "catalog:",
-    "unbuild": "^3.5.0",
+    "unbuild": "^3.6.1",
     "vitest": "catalog:"
   },
   "packageManager": "pnpm@11.3.0+sha512.2c403d6594527287672b1f7056343a1f7c3634036a67ffabfcc2b3d7595d843768f8787148d1b57cf7956c90606bbd192857c363af19e96d2d0ec9ec5741d215"
