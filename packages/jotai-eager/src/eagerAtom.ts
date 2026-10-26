@@ -45,7 +45,11 @@ const NotYet = Symbol(
   '(jotai-eager) Not all dependencies were fulfilled. Are you a dev? Call `isEagerError(e)` to detect this thrown value and rethrow it, as its handled by the library.',
 );
 
-interface EagerError {
+/**
+ * The value thrown by an eager atom's getter when a dependency is not yet fulfilled.
+ * Detect it with `isEagerError(e)`, and rethrow it.
+ */
+export interface EagerError {
   [NotYet]: Promise<unknown>;
 }
 
@@ -323,7 +327,7 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
  * detect whether a thrown value originates from `jotai-eager`, in which case should be rethrown.
  *
  * @param error The error thrown during eager atom computation to check.
- * @returns True if the error is a suspension trigger from jotai-eager, indicating computation should be paused; otherwise, false.
+ * @returns True if the error is a suspension trigger from jotai-eager (narrowing it to `EagerError`), indicating computation should be paused; otherwise, false.
  *
  * @example
  * ```ts
@@ -341,6 +345,6 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
  * });
  * ```
  */
-export function isEagerError(error: unknown): boolean {
+export function isEagerError(error: unknown): error is EagerError {
   return !!(error as EagerError)?.[NotYet];
 }
