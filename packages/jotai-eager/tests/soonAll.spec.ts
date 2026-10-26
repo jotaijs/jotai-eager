@@ -1,9 +1,25 @@
 import { eagerAtom, isEagerError, soonAll } from 'jotai-eager';
 import { atom, createStore } from 'jotai/vanilla';
-import { describe, expect, expectTypeOf, it } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { deferred } from './mockUtils.ts';
 
 describe('soonAll', () => {
+  it('listens to each pending promise only once, across calls', async () => {
+    const task = deferred<number>();
+    const then = vi.spyOn(task.promise, 'then');
+
+    const first = soonAll([task.promise, 1]);
+    const second = soonAll([task.promise, 2]);
+    // One tracking listener, plus one from each `Promise.all`.
+    expect(then).toHaveBeenCalledTimes(3);
+
+    task.resolve(0);
+    await expect(first).resolves.toEqual([0, 1]);
+    await expect(second).resolves.toEqual([0, 2]);
+    // The settled value is known synchronously afterwards.
+    expect(soonAll([task.promise, 3])).toEqual([0, 3]);
+  });
+
   it('returns the same elements if all of them are concrete values', () => {
     const result = soonAll([1, 2, 3]);
     expect(result).toEqual([1, 2, 3]);

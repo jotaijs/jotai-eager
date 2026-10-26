@@ -16,6 +16,7 @@ type PromiseMeta<T> = PromiseMetaPending | PromiseMetaFulfilled<T> | PromiseMeta
 
 const PENDING: PromiseMetaPending = { status: 'pending' } as const;
 const promiseMetaCache = new WeakMap<object, PromiseMeta<unknown>>();
+const trackedPromises = new WeakSet<PromiseLike<unknown>>();
 
 export function isPromiseLike<T>(value: PromiseLike<T> | unknown): value is PromiseLike<T> {
   return typeof (value as PromiseLike<T>)?.then === 'function';
@@ -31,6 +32,21 @@ export function getPromiseMeta<T>(promise: unknown | Promise<T>): PromiseMeta<T>
 
 export function setPromiseMeta<T>(promise: PromiseLike<T>, meta: PromiseMeta<T>): void {
   promiseMetaCache.set(promise, meta);
+}
+
+/**
+ * Records the meta of `promise` once it settles. Listens to each promise at most once,
+ * no matter how many times it's called.
+ */
+export function trackPromise<T>(promise: PromiseLike<T>): void {
+  if (trackedPromises.has(promise)) {
+    return;
+  }
+  trackedPromises.add(promise);
+  promise.then(
+    (value) => setPromiseMeta(promise, { status: 'fulfilled', value }),
+    (reason) => setPromiseMeta(promise, { status: 'rejected', reason }),
+  );
 }
 
 /**
