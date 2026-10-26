@@ -120,7 +120,9 @@ function unwrapPromises<T extends readonly unknown[]>(values: T): AwaitedValues<
 function resolveSuspension<T>(
   compute: () => T,
   getLatest: () => T | Promise<T>,
-  signal: AbortSignal,
+  // Passing Jotai's options instead of the signal itself, since accessing
+  // `signal` creates an AbortController, which is only needed when suspending.
+  options: { readonly signal: AbortSignal },
 ): T | Promise<T> {
   try {
     // If the computation is strictly synchronous, the function will
@@ -130,6 +132,7 @@ function resolveSuspension<T>(
     const suspended = (e as EagerError | { [NotYet]?: undefined } | null | undefined)?.[NotYet];
     if (suspended) {
       // There's a pending promise
+      const { signal } = options;
       return new Promise<T>((resolve) => {
         signal.addEventListener(
           'abort',
@@ -150,7 +153,7 @@ function resolveSuspension<T>(
           }
           // ... otherwise we try to compute the atom again. On rejection, this
           // lets the read function itself handle the error.
-          resolve(resolveSuspension(compute, getLatest, signal));
+          resolve(resolveSuspension(compute, getLatest, options));
         };
 
         suspended.then(
@@ -235,7 +238,7 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
   let warnedAboutStall = false;
 
   const resultAtom: WritableAtom<Promise<Value> | Value, Args, Result> = atom(
-    (get, { signal }) => {
+    (get, options) => {
       const eagerGet = (<Value>(atomToGet: Atom<Value>): Awaited<Value> =>
         unwrapPromise(get(atomToGet))) as EagerGetter;
 
@@ -308,7 +311,7 @@ export function eagerAtom<Value, Args extends unknown[], Result>(
         }
       };
 
-      return resolveSuspension(compute, () => get(resultAtom), signal);
+      return resolveSuspension(compute, () => get(resultAtom), options);
     },
     // Jotai only makes the atom writable if `write` is defined, matching read-only vanilla atoms.
     write as Write<Args, Result>,
